@@ -51,14 +51,14 @@ exports.Contract = function(address, abi, symtab) {
         
         return dataHex;
     }
-    function handleVar(varType, rawValue) {
+    function handleVar(varType, nibbles) {
         var finalValue = null;
         switch (varType) {
         case "bool" :
-            finalValue = (rawValue != 0);
+            finalValue = (nibbles != 0);
             break;
         case "address" :
-            finalValue = "0x" + rawValue.slice(-20);
+            finalValue = "0x" + nibbles.slice(-40).join("");
             break;
         default:
             break;
@@ -74,12 +74,15 @@ exports.Contract = function(address, abi, symtab) {
                 if (typeof symtab[sym]["atStorageKey"] === "undefined") {
                     continue;
                 }
-                var symRow = symtab[sym]
-                var symKey = symRow["atStorageKey"];
+                var symRow = symtab[sym];
+                var symKey = exports.hexStringAs64Nibbles(symRow["atStorageKey"]);
                 var varType = symRow["solidityType"];
-                var symVal = "0x00000000000000000000000000000000";
+                var symVal = exports.hexStringAs64Nibbles("0x");
                 if (typeof keyvals[symKey] !== "undefined") {
                     symVal = keyvals[symKey];
+                }
+                else {
+                    console.log("Undefined storage key: " + symKey);
                 }
                 handledStorage[sym] = handleVar(varType,symVal);
             }
@@ -122,6 +125,29 @@ exports.Contract = function(address, abi, symtab) {
         }
         xhr.send();
     }
+}
+
+exports.getStorage = function(address, f) {
+    var oReq = new XMLHttpRequest();
+    oReq.open("GET", "/query/storage?address=" + address, true);
+    oReq.onload = function () { 
+        if(oReq.readyState == 4 && oReq.status == 200) {
+	    var storage = JSON.parse(this.responseText);
+            var keyvals = {};
+            storage.forEach(function(x) {
+                canonKey = exports.hexStringAs64Nibbles(x.key);
+                canonValue = exports.hexStringAs64Nibbles(x.value);
+                keyvals[canonKey] = canonValue;
+            });
+            console.log(keyvals);
+            f(keyvals);
+	}
+        else {
+            console.log(this.responseText);
+        }
+    }
+
+    oReq.send();
 }
 
 exports.compile = function(code, f) {
@@ -261,79 +287,15 @@ exports.pushTX  = function(nonce,gasPrice,gasLimit,toAddress,value,data,privKey,
     xhr.send(txString);
 }
 
-
-exports.loadVariableFromStorage = function(address, urlroot, callback) {
-  var xhr = new XMLHttpRequest();
-  var filters = "?address=".concat(address);
-
-  var url = urlroot.concat(filters);
-
-  xhr.open("GET", url, true);
-
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState == 4) {
-      if (typeof callback !== 'undefined') {
-	   callback(xhr.responseText);
-      }
-
-	console.log(xhr.responseText);
+exports.hexStringAs64Nibbles = function(hexString) {
+    var rawArray = hexString.split("");
+    if (rawArray[0] == "0" && rawArray[1] == "x") {
+        rawArray = rawArray.slice(2);
     }
- }
-
- xhr.send();
-}
-
-exports.loadVariableFromStorageKey = function(address, key, urlroot, callback) {
- var xhr = new XMLHttpRequest();
- var filters = "?address=".concat(address).concat("&keyhex=").concat(key);
-
- var url = urlroot.concat(filters);
-
- xhr.open("GET", url, true);
-
- xhr.onreadystatechange = function() {
-    if (xhr.readyState == 4) {
-
-	if (typeof callback !== 'undefined') {
-	        callback(xhr.responseText);
-	    }
-
-	console.log(xhr.responseText);
+    while (rawArray.length < 64) {
+        rawArray.unshift("0");
     }
- }
-
- xhr.send();
-}
-// assume that key and index are 32 byte hex strings
-exports.keyIndexToLookup = function(key,index) {
-  var words = CryptoJS.enc.Hex.parse(key.concat(index));
-  return CryptoJS.SHA3(words, { outputLength: 256}).toString(CryptoJS.enc.Hex);
-}
-
-exports.arrayIndexToLookup = function(index) {
-  var words = CryptoJS.enc.Hex.parse(index);
-  return CryptoJS.SHA3(words, { outputLength: 256}).toString(CryptoJS.enc.Hex);
-}
-
-exports.getStorage = function(address, f) {
-    var oReq = new XMLHttpRequest();
-    oReq.open("GET", "/query/storage?address=" + address, true);
-    oReq.onload = function () { 
-        if(oReq.readyState == 4 && oReq.status == 200) {
-	    var storage = JSON.parse(this.responseText);
-            var keyvals = {};
-            storage.forEach(function(x) {
-                keyvals[x.key] = x.value;
-            });
-            console.log(storage);
-            f(storage);
-	}
-        else {
-            console.log(this.responseText);
-        }
-    }
-
-    oReq.send();
+    return rawArray;
 }
 
 
