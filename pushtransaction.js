@@ -2,6 +2,8 @@ var Ethereum = require('../index.js');
 var Web3Coder = require('web3/lib/solidity/coder');
 var CryptoJS = require('crypto-js')
 var Transaction = Ethereum.Transaction;
+var BigInt = require('big-integer');
+//var BigNum = require('bignumber');
 
 var rlp = Ethereum.rlp;
 var utils = Ethereum.utils;
@@ -32,6 +34,130 @@ exports.getContract = function(code, privKey, gasPrice, gasLimit, f) {
 
 exports.Contract = function(address, abi, symtab) {
     console.log(symtab);
+    
+    function handleDynamicArray(symRow, nibbles) {}
+    function handleFixedArray(symRow, nibbles) {}
+    function handleMapping(symRow, nibbles) {
+        
+    }
+    function handleShortInteger(symRow, nibbles) {}
+    function handleShortType(symRow, nibbles) {
+        var symKeyAndOffset = symRow["atStorageKey"].split("+")
+        var symOffset = (symKeyAndOffset.length == 2) ? symKeyAndOffset[1] : "0x0";
+        var intOffset = parseInt(symOffset,16);
+        var intBytes = parseInt(symRow["bytesUsed"],16);
+        var usedNibbles = nibbles.slice(2*intOffset, 2*(intOffset + intBytes));
+        
+        switch (symRow["solidityType"]) {
+        case "bool" :
+            return !nibbles.reduce(function (p, c, i, a) {
+                return p && (c === "0");
+            }, true);
+        case "address" :
+            return "0x" + nibbles.slice(-40).join("");
+        default:
+            handleShortInteger(symRow, usedNibbles);
+            break;
+        }
+    }
+    function handleLongType(symRow, nibbles) {
+        switch(symRow["solidityType"]) {
+        case 'uint256':
+            var asNum = BigInt(nibbles.join(""),16);
+            return asNum;
+        case 'int256':
+            var asNum = BigInt(nibbles.join(""),16);
+            var topBitInt = asNum.and(BigInt(1).shiftLeft(255));
+            return asNum.minus(topBitInt).minus(topBitInt); // 2's complement
+        case 'bytes32': // bytes
+            bytes = [];
+            for (i = 0; i < 32; ++i) {
+                b = [nibbles.shift(), nibbles.shift()].join("");
+                bytes.push(String.fromCharCode(parseInt(b,16)));
+            }
+            return bytes.join("");
+        case 'ureal128x128':
+            // return BigNum(nibbles.join(""),16).div(BigNum(2).pow(128));
+        case 'real128x128':
+            // Don't need this.
+        }
+    }
+
+    function handleVar(symRow, nibbles) {
+        if (typeof symRow["arrayDataStart"] !== "undefined") {
+            return handleDynamicArray(symRow,nibbles);
+        }
+        if (typeof symRow["arrayLength"] !== "undefined") {
+            return handleFixedArray(symRow,nibbles);
+        }
+        if (typeof symRow["mappingKey"] !== "undefined") {
+            return handleMapping(symRow,nibbles);
+        }
+        if (symRow["bytesUsed"] < 32) {
+            return handleShortType(symRow,nibbles);
+        }
+        return handleLongType(symRow, nibbles);
+    }
+
+    this.showStorage = function(f) {
+        function handleStorage(keyvals) {
+            var handledStorage = {};
+            for (var sym in symtab) {
+                console.log("Handling " + sym);
+                if (typeof symtab[sym]["atStorageKey"] === "undefined") {
+                    continue;
+                }
+                var symRow = symtab[sym];
+                var symKeyAndOffset = symRow["atStorageKey"].split("+");
+                var symKey = exports.hexStringAs64Nibbles(symKeyAndOffset[0]);
+                var symVal = exports.hexStringAs64Nibbles("0x");
+                if (typeof keyvals[symKey] !== "undefined") {
+                    symVal = keyvals[symKey];
+                }
+                else {
+                    console.log("Undefined storage key: " + symKey);
+                }
+                handledStorage[sym] = handleVar(symRow,symVal);
+            }
+            f(handledStorage);
+        }
+        
+        exports.getStorage(address, handleStorage);
+    }
+    // this.retrieve = function(varName,callback) {
+    //     if (typeof symtab[varName] === "undefined") {
+    //         return {};
+    //     }
+    //     var varJson = symtab[varname];
+    //     var varType = varJson["solidityType"];
+
+    //     if (typeof varJson["atStorageKey"] === "undefined") {
+    //         return {};
+    //     }
+    //     var atKey = varJson["atStorageKey"];
+
+    //     var filters = [
+    //         "address=".concat(address),
+    //         "keyhex=".concat(atKey)
+    //     ].join("&");
+    //     var query = "/query/storage?".concat(filters);
+
+    //     var xhr = new XMLHttpRequest();
+    //     xhr.open("GET", query, true);
+    //     xhr.onreadystatechange = function() {
+    //         if (xhr.readyState == 4) {
+    //             if (typeof callback !== 'undefined') {
+    //                 var handledVar = handleVar(varType,xhr.responseText);
+    //                 console.log(handledVar);
+    //                 callback(handledVar);
+    //             }
+
+    //             console.log(xhr.responseText);
+    //         }
+
+    //     }
+    //     xhr.send();
+    // }
     this.address = address;
     this.makeCall = function(functionName, args) { // previously functionNameToData
         function matchesFunctionName(json) {
@@ -50,80 +176,6 @@ exports.Contract = function(address, abi, symtab) {
         var dataHex = signature + Web3Coder.encodeParams(types, args);
         
         return dataHex;
-    }
-    function handleVar(varType, nibbles) {
-        var finalValue = null;
-        switch (varType) {
-        case "bool" :
-            finalValue = (nibbles != 0);
-            break;
-        case "address" :
-            finalValue = "0x" + nibbles.slice(-40).join("");
-            break;
-        default:
-            break;
-        }
-        return finalValue;
-    }
-
-    this.showStorage = function(f) {
-        function handleStorage(keyvals) {
-            var handledStorage = {};
-            for (var sym in symtab) {
-                console.log("Handling " + sym);
-                if (typeof symtab[sym]["atStorageKey"] === "undefined") {
-                    continue;
-                }
-                var symRow = symtab[sym];
-                var symKey = exports.hexStringAs64Nibbles(symRow["atStorageKey"]);
-                var varType = symRow["solidityType"];
-                var symVal = exports.hexStringAs64Nibbles("0x");
-                if (typeof keyvals[symKey] !== "undefined") {
-                    symVal = keyvals[symKey];
-                }
-                else {
-                    console.log("Undefined storage key: " + symKey);
-                }
-                handledStorage[sym] = handleVar(varType,symVal);
-            }
-            f(handledStorage);
-        }
-        
-        exports.getStorage(address, handleStorage);
-    }
-    this.retrieve = function(varName,callback) {
-        if (typeof symtab[varName] === "undefined") {
-            return {};
-        }
-        var varJson = symtab[varname];
-        var varType = varJson["solidityType"];
-
-        if (typeof varJson["atStorageKey"] === "undefined") {
-            return {};
-        }
-        var atKey = varJson["atStorageKey"];
-
-        var filters = [
-            "address=".concat(address),
-            "keyhex=".concat(atKey)
-        ].join("&");
-        var query = "/query/storage?".concat(filters);
-
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", query, true);
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState == 4) {
-                if (typeof callback !== 'undefined') {
-                    var handledVar = handleVar(varType,xhr.responseText);
-                    console.log(handledVar);
-	            callback(handledVar);
-                }
-
-	        console.log(xhr.responseText);
-            }
-
-        }
-        xhr.send();
     }
 }
 
@@ -159,9 +211,9 @@ exports.compile = function(code, f) {
 
     oReq.onload = function () { 
         if(oReq.readyState == 4 && oReq.status == 200) {
-            console.log(this.responseText);
+            //console.log(this.responseText);
             var solcResult = JSON.parse(this.responseText);
-            console.log(solcResult);
+            //console.log(solcResult);
             f(solcResult);
         }
         else {
@@ -175,12 +227,12 @@ exports.compile = function(code, f) {
 exports.submit = function(bin, privKey, gasPrice, gasLimit, f) {
     function getNewContracts (txHashQuery) {
         var txHash = txHashQuery.split('=')[1];
-        console.log(txHash);
+        //console.log(txHash);
         exports.getContractsCreated(txHash, f);
     }
 
     var fromAddress = utils.privateToAddress(new Buffer(privkey.value, 'hex')).toString('hex');
-    console.log(fromAddress);
+    //console.log(fromAddress);
   
     function push(nonce) {
         exports.pushTX(nonce, gasPrice, gasLimit, undefined, 0, bin, privKey, "/includetransaction", getNewContracts);
@@ -212,7 +264,7 @@ exports.getNonce = function(address, f) {
     oReq.onload = function () { 
         if(oReq.readyState == 4 && oReq.status == 200) {
 	    var nonce = JSON.parse(this.responseText)[0].nonce;
-            console.log(nonce);
+            //console.log(nonce);
             f(nonce);
 	}
         else {
@@ -283,7 +335,7 @@ exports.pushTX  = function(nonce,gasPrice,gasLimit,toAddress,value,data,privKey,
     }
 
     var txString = JSON.stringify(js);
-    console.log(txString);
+    //console.log(txString);
     xhr.send(txString);
 }
 
