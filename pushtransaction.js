@@ -122,7 +122,7 @@ exports.Contract = function(address, abi, symtab) {
             f(handledStorage);
         }
         
-        exports.getStorage(address, handleStorage);
+        exports.getStorage(address, handleStorage, "http://stablenet.blockapps.net");
     }
     // this.retrieve = function(varName,callback) {
     //     if (typeof symtab[varName] === "undefined") {
@@ -179,9 +179,14 @@ exports.Contract = function(address, abi, symtab) {
     }
 }
 
-exports.getStorage = function(address, f) {
+exports.getStorage = function(address, f, urlroot) {
+    var urlcat = "";
+    if (!(typeof urlroot === 'undefined')) {
+      urlcat = urlroot;
+    };
+   
     var oReq = new XMLHttpRequest();
-    oReq.open("GET", "/query/storage?address=" + address, true);
+    oReq.open("GET", urlcat + "/query/storage?address=" + address, true);
     oReq.onload = function () { 
         if(oReq.readyState == 4 && oReq.status == 200) {
 	    var storage = JSON.parse(this.responseText);
