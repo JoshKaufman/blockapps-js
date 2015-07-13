@@ -8,7 +8,7 @@ var BigInt = require('big-integer');
 var rlp = Ethereum.rlp;
 var utils = Ethereum.utils;
 
-exports.getContract = function(code, privKey, gasPrice, gasLimit, f) {
+exports.getContract = function(apiURL, code, privKey, gasPrice, gasLimit, f) {
     function compileCallback(compiled) { 
         if (compiled["contracts"].length != 1) {
             console.log("Code must define one and only one contract");
@@ -26,10 +26,10 @@ exports.getContract = function(code, privKey, gasPrice, gasLimit, f) {
             f(contract);
         }
 
-        exports.submit(bin, privKey, gasPrice, gasLimit, submitCallback);
+        exports.submit(apiURL, bin, privKey, gasPrice, gasLimit, submitCallback);
     }
 
-    exports.compile(code, compileCallback);
+    exports.compile(apiURL, code, compileCallback);
 }
 
 exports.Contract = function(address, abi, symtab) {
@@ -99,7 +99,7 @@ exports.Contract = function(address, abi, symtab) {
         return handleLongType(symRow, nibbles);
     }
 
-    this.showStorage = function(f) {
+    this.showStorage = function(apiURL, f) {
         function handleStorage(keyvals) {
             var handledStorage = {};
             for (var sym in symtab) {
@@ -122,7 +122,7 @@ exports.Contract = function(address, abi, symtab) {
             f(handledStorage);
         }
         
-        exports.getStorage(address, handleStorage);
+        exports.getStorage(apiURL, address, handleStorage);
     }
     // this.retrieve = function(varName,callback) {
     //     if (typeof symtab[varName] === "undefined") {
@@ -177,34 +177,17 @@ exports.Contract = function(address, abi, symtab) {
         
         return dataHex;
     }
-}
-
-exports.getStorage = function(address, f) {
-    var oReq = new XMLHttpRequest();
-    oReq.open("GET", "/query/storage?address=" + address, true);
-    oReq.onload = function () { 
-        if(oReq.readyState == 4 && oReq.status == 200) {
-	    var storage = JSON.parse(this.responseText);
-            var keyvals = {};
-            storage.forEach(function(x) {
-                canonKey = exports.hexStringAs64Nibbles(x.key);
-                canonValue = exports.hexStringAs64Nibbles(x.value);
-                keyvals[canonKey] = canonValue;
-            });
-            console.log(keyvals);
-            f(keyvals);
-	}
-        else {
-            console.log(this.responseText);
+    this.getBalance = function(apiURL, f) {
+        function extractBalance(accountQueryResponse) {
+            return accountQueryResponse[0].balance;
         }
+        queryAPI(apiURL + "/query/account?address=" + address, extractBalance, f);
     }
-
-    oReq.send();
 }
 
-exports.compile = function(code, f) {
+exports.compile = function(apiURL, code, f) {
     var oReq = new XMLHttpRequest();
-    oReq.open("POST", "/solc", true);
+    oReq.open("POST", apiURL + "/solc", true);
 
     var params = "src=" + encodeURIComponent(code);
     oReq.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
@@ -224,55 +207,83 @@ exports.compile = function(code, f) {
     oReq.send(params);
 }
 
-exports.submit = function(bin, privKey, gasPrice, gasLimit, f) {
+exports.submit = function(apiURL, bin, privKey, gasPrice, gasLimit, f) {
     function getNewContracts (txHashQuery) {
         var txHash = txHashQuery.split('=')[1];
         //console.log(txHash);
-        exports.getContractsCreated(txHash, f);
+        exports.getContractsCreated(apiURL, txHash, f);
     }
 
     var fromAddress = utils.privateToAddress(new Buffer(privkey.value, 'hex')).toString('hex');
     //console.log(fromAddress);
   
     function push(nonce) {
-        exports.pushTX(nonce, gasPrice, gasLimit, undefined, 0, bin, privKey, "/includetransaction", getNewContracts);
+        exports.pushTX(nonce, gasPrice, gasLimit, undefined, 0, bin, privKey, apiURL + "/includetransaction", getNewContracts);
     }
 
-    exports.getNonce(fromAddress, push);
+    exports.getNonce(apiURL, fromAddress, push);
 }
 
-exports.getContractsCreated = function(txHash, f) {
+function queryAPI (queryURL, handleResponse, callback) {
     var oReq = new XMLHttpRequest();
-    oReq.open("GET", "/transactionResult/" + txHash, true);
+    oReq.open("GET", queryURL, true);
     oReq.onload = function () { 
         if(oReq.readyState == 4 && oReq.status == 200) {
-	    var contracts = JSON.parse(this.responseText)[0]["contractsCreated"].split(",")[0];
-            console.log(contracts);
-            f(contracts);
+	    var response = JSON.parse(this.responseText)
+            console.log(response);
+            callback(handleResponse(response));
 	}
         else {
             console.log(this.responseText);
         }
     }
+
+    oReq.send();
+}
+
+function getSomeStorage(queryURL, handleStorageKeyVals, f) {
+    function makeStorageKeyVals(storageQueryResponse) {
+        var keyvals = {};
+        storageQueryResponse.forEach(function(x) {
+            var canonKey = exports.hexStringAs64Nibbles(x.key);
+            var canonValue = exports.hexStringAs64Nibbles(x.value);
+            keyvals[canonKey] = canonValue;
+        });
+        return keyvals;
+    }    
+    function handleStorage (storageQueryResponse) {
+        return handleStorageKeyVals(makeStorageKeyVals(storageQueryResponse));
+    }
+    queryAPI(queryURL, handleStorage, f);
+}
+
+exports.getStorage = function(apiURL, address, f) {
+    getSomeStorage(apiURL + "/query/storage?address=" + address,
+                   function g(x) {return x}, f);
+}
+
+exports.getStorageKey = function(apiURL, address, keyhex, f) {
+    getSomeStorage(apiURL + "/query/storage?address=" + address
+                   + "&keyhex=" + keyhex, function g(x) {}, f);
+}
+
+exports.getContractsCreated = function(apiURL, txHash, f) {
+    function firstContractCreated(transactionResultResponse) {
+        return transactionResultResponse[0].contractsCreated.split(",")[0];
+    }
+
     alert("Push OK to get contracts");
-    oReq.send();
+    queryAPI(apiURL + "/transactionResult/" + txHash,
+                     firstContractCreated, f);
 }
 
-exports.getNonce = function(address, f) {
-    var oReq = new XMLHttpRequest();
-    oReq.open("GET", "/query/account?address=" + address, true);
-    oReq.onload = function () { 
-        if(oReq.readyState == 4 && oReq.status == 200) {
-	    var nonce = JSON.parse(this.responseText)[0].nonce;
-            //console.log(nonce);
-            f(nonce);
-	}
-        else {
-            console.log(this.responseText);
-        }
+exports.getNonce = function(apiURL, address, f) {
+    function firstNonce(accountQueryResponse) {
+        return accountQueryResponse[0].nonce;
     }
 
-    oReq.send();
+    queryAPI(apiURL + "/query/account?address=" + address,
+                     firstNonce, f);
 }
 
 exports.pushTX  = function(nonce,gasPrice,gasLimit,toAddress,value,data,privKey,url,f)  {
