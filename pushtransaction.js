@@ -3,10 +3,27 @@ var Web3Coder = require('web3/lib/solidity/coder');
 var CryptoJS = require('crypto-js')
 var Transaction = Ethereum.Transaction;
 var BigInt = require('big-integer');
+var utf8 = require('utf8');
 //var BigNum = require('bignumber');
 
 var rlp = Ethereum.rlp;
 var utils = Ethereum.utils;
+
+function asInt(hexString) {
+    if (hexString.length >= 2 && hexString.slice(0,2) == "0x") {
+        hexString = hexString.slice(2);
+    }
+    return BigInt(hexString,16)
+}
+
+function asString(nibbleList) {
+    var bytes = [];
+    while (nibbleList.length > 0) { // Can't be that long
+        b = "0x" + [nibbleList.shift(), nibbleList.shift()].join("");
+        bytes.push(String.fromCharCode(parseInt(b,16)));
+    }
+    return bytes.join("");
+}
 
 exports.getContract = function(apiURL, code, privKey, gasPrice, gasLimit, f) {
     function compileCallback(compiled) { 
@@ -15,7 +32,6 @@ exports.getContract = function(apiURL, code, privKey, gasPrice, gasLimit, f) {
             return;
             // We can collate multiple contracts by matching names
         }
-
         var name = compiled["contracts"][0]["name"];
         var bin  = compiled["contracts"][0]["bin"];
         var abi  = compiled["abis"][0]["abi"];
@@ -33,131 +49,195 @@ exports.getContract = function(apiURL, code, privKey, gasPrice, gasLimit, f) {
 }
 
 exports.Contract = function(address, abi, symtab) {
-    console.log(symtab);
-    
-    function handleDynamicArray(symRow, nibbles) {}
-    function handleFixedArray(symRow, nibbles) {}
-    function handleMapping(symRow, nibbles) {
+    function handleFixedArray(symRow) {
+        var eltRow = Object.assign({},symRow["arrayElement"]);
+        eltRow["atStorageKey"] = symRow["atStorageKey"];
+        eltRow["atStorageOffset"] = "0x0";
+
+        var eltSize = asInt(eltRow["bytesUsed"]);
+        var numElts = asInt(symRow["arrayLength"]);
+
+        var arrayCR = asInt(symRow["arrayNewKeyEach"]);
+        var arrayCRSkip = (eltSize.lt(32) ? 1 : eltSize.over(32));
+
+        var result = [];
+        while (result.length < numElts) {
+            result.push(handleVar.bind(this)(eltRow));
+            if (BigInt(result.length).isDivisibleBy(arrayCR)) {
+                var oldKey = asInt(eltRow["atStorageKey"]);
+                eltRow["atStorageKey"] = oldKey.plus(arrayCRSkip).toString(16);
+                eltRow["atStorageOffset"] = "0x0";
+            }
+            else {
+                var oldOff = asInt(eltRow["atStorageOffset"]);
+                eltRow["atStorageOffset"] = eltSize.plus(oldOff).toString(16);
+            }
+        }
+
         
+        return result;
     }
-    function handleShortInteger(symRow, nibbles) {}
-    function handleShortType(symRow, nibbles) {
-        var symKeyAndOffset = symRow["atStorageKey"].split("+")
-        var symOffset = (symKeyAndOffset.length == 2) ? symKeyAndOffset[1] : "0x0";
-        var intOffset = parseInt(symOffset,16);
-        var intBytes = parseInt(symRow["bytesUsed"],16);
-        var usedNibbles = nibbles.slice(2*intOffset, 2*(intOffset + intBytes));
+    function handleDynamicArray(symRow) {
+        var key = symRow["atStorageKey"];
+        var length = this._storage.atKey(key).join("");
+        var realKey = symRow["arrayDataStart"];
+
+        if (typeof symRow["arrayElement"] !== "undefined") {
+            var fixedArrayRow = Object.assign({},symRow);
+            fixedArrayRow["atStorageKey"] = realKey;
+            fixedArrayRow["arrayLength"] = length;
+            delete fixedArrayRow["arrayDataStart"];
+            return handleFixedArray.bind(this)(fixedArrayRow);
+        }
+        else {
+            var numSlots = asInt(length).over(32);
+            var rawData = this._storage.chunk(realKey,numSlots);
+            var stringData = asString([].concat.apply([],rawData));
+            if (symRow["solidityType"] == "bytes") {
+                return stringData;
+            }
+            if (symRow["solidityType"] == "string") {
+                return utf8.decode(stringData);
+            }
+            return null; // I think that's it
+        }
+    }
+    function handleMapping(symRow) {
+        return function (x) {
+            var canonKeyAt = exports.hexStringAs64Nibbles(symRow["atStorageKey"]).join("");
+            var key = CryptoJS.SHA3(x.toString(16) + canonKeyAt).toString(CryptoJS.enc.Hex);
+            var eltRow = Object.assign({},symRow["mappingValue"]);
+            eltRow["storageKeyAt"] = key;
+            return handleVar.bind(this)(eltRow);
+        }
+    }
+
+    // function finishWithReal(symRow, usedNibbles, prefix) {
+    //     var precision = parseInt(symRow["solidityType"].split(/\D+/,16)[-1]);
+    //     var denom = BigNum(2).pow(precision);
+    //     var numer = BigNum(usedNibbles.join(""));
+
+    //     switch(prefix) {
+    //     case "ureal":
+    //         return numer.over(denom);
+    //     case "real":
+    //         var bitSize = 8*parseInt(symRow["bytesUsed"],16);
+    //         var topBitInt = bigNum(2).pow(bitSize - 1);
+    //         var asInt = numer;
+    //         if (asInt.gte(topBitInt)) {
+    //             asInt = asInt.minus(topBitInt).minus(topBitInt);
+    //         }
+    //         return asInt.over(denom);            
+    //     default:
+    //         return null; // I don't think there is anything else, though
+    //     }
+    // }
+
+    function structType(baseKey, structFields) {
+        var result = {};
+        for (var field in structFields) {
+            var fieldRow = Object.assign({},structFields[field]);
+            var fieldKey = asInt(fieldRow["atStorageKey"]);
+            var realKey = baseKey.plus(fieldKey);
+            fieldRow["atStorageKey"] = realKey.toString(16);
+            result[field] = handleVar.bind(this)(fieldRow);
+        }
+
+        return result;
+    }
+
+    function enumType(enumNames, usedNibbles) {
+        var result = {};
+        result._nameMap = enumNames;
+        result._nameList = [];
+        for (var name in result._nameMap) {
+            result._nameList[result._nameMap[name]] = name;
+        }
+        result._value = asInt(usedNibbles.join(""));
+        result.setName = function (name) {
+            result._value = result._nameMap[name];
+        }
+        result.getNum = function () {
+            return result._value;
+        }
+        result.getName = function () {
+            return result._nameList[result._value];
+        }
+        return result;
+    }
+    
+    function userDefinedType(symRow, usedNibbles) {
+        var typeName = symRow["solidityType"];
+        if (typeof symtab[typeName] === "undefined") {
+            return null;
+        }
         
+        var typeSymTab = symtab[typeName];
+        if (typeof typeSymTab["structFields"] !== "undefined") {
+            var baseKey = asInt(symRow["atStorageKey"]);
+            return structType.bind(this)(baseKey, typeSymTab["structFields"]);
+        }
+        if (typeof typeSymTab["enumNames"] !== "undefined") {
+            return enumType.bind(this)(typeSymTab["enumNames"], usedNibbles)
+        }
+    }
+    
+    function continueWithIntegral(symRow, usedNibbles) {
+        var prefix = symRow["solidityType"].split(/\d+/)[0];
+        switch(prefix) {
+        case 'uint':
+            return asInt(usedNibbles.join(""));
+        case 'int':
+            var bitSize = asInt(symRow["bytesUsed"]).times(8);
+            var asUInt = asInt(usedNibbles.join(""));
+            var topBitInt = asUInt.and(BigInt(1).shiftLeft(bitSize - 1));
+            return asUInt.minus(topBitInt).minus(topBitInt); // 2's complement
+        case 'bytes': // bytes
+            return asString(usedNibbles);
+        default:
+            //return finishWithReal(symRow, usedNibbles, prefix);
+            return userDefinedType.bind(this)(symRow, usedNibbles);
+        }
+    }
+
+    function startWithNonNumeric(symRow, usedNibbles) {
         switch (symRow["solidityType"]) {
         case "bool" :
-            return !nibbles.reduce(function (p, c, i, a) {
-                return p && (c === "0");
-            }, true);
+            return (parseInt(usedNibbles.join(""),16) != 0);
         case "address" :
-            return "0x" + nibbles.slice(-40).join("");
+            return "0x" + usedNibbles.join("");
         default:
-            handleShortInteger(symRow, usedNibbles);
+            return continueWithIntegral.bind(this)(symRow, usedNibbles);
             break;
         }
     }
-    function handleLongType(symRow, nibbles) {
-        switch(symRow["solidityType"]) {
-        case 'uint256':
-            var asNum = BigInt(nibbles.join(""),16);
-            return asNum;
-        case 'int256':
-            var asNum = BigInt(nibbles.join(""),16);
-            var topBitInt = asNum.and(BigInt(1).shiftLeft(255));
-            return asNum.minus(topBitInt).minus(topBitInt); // 2's complement
-        case 'bytes32': // bytes
-            bytes = [];
-            for (i = 0; i < 32; ++i) {
-                b = [nibbles.shift(), nibbles.shift()].join("");
-                bytes.push(String.fromCharCode(parseInt(b,16)));
-            }
-            return bytes.join("");
-        case 'ureal128x128':
-            // return BigNum(nibbles.join(""),16).div(BigNum(2).pow(128));
-        case 'real128x128':
-            // Don't need this.
-        }
+
+    function handleSimpleType(symRow) {
+        var symKey = symRow["atStorageKey"]
+        var symOffset = (typeof symRow["atStorageOffset"] === "undefined") ?
+            "0x0" : symRow["atStorageOffset"];
+        var intOffset = parseInt(symOffset,16);
+        var intBytes = parseInt(symRow["bytesUsed"],16);
+
+        // The reversing is an expedient way of dealing with big-endianness
+        var nibbles = this._storage.atKey(symKey).slice(0).reverse();
+        var usedNibbles = nibbles.slice(2*intOffset, 2*(intOffset + intBytes)).reverse();
+        return startWithNonNumeric.bind(this)(symRow, usedNibbles);
     }
 
-    function handleVar(symRow, nibbles) {
+    function handleVar(symRow) {
         if (typeof symRow["arrayDataStart"] !== "undefined") {
-            return handleDynamicArray(symRow,nibbles);
+            return handleDynamicArray.bind(this)(symRow);
         }
         if (typeof symRow["arrayLength"] !== "undefined") {
-            return handleFixedArray(symRow,nibbles);
+            return handleFixedArray.bind(this)(symRow);
         }
-        if (typeof symRow["mappingKey"] !== "undefined") {
-            return handleMapping(symRow,nibbles);
+        if (typeof symRow["mappingValue"] !== "undefined") {
+            return handleMapping.bind(this)(symRow);
         }
-        if (symRow["bytesUsed"] < 32) {
-            return handleShortType(symRow,nibbles);
-        }
-        return handleLongType(symRow, nibbles);
+        return handleSimpleType.bind(this)(symRow);
     }
 
-    this.showStorage = function(apiURL, f) {
-        function handleStorage(keyvals) {
-            var handledStorage = {};
-            for (var sym in symtab) {
-                console.log("Handling " + sym);
-                if (typeof symtab[sym]["atStorageKey"] === "undefined") {
-                    continue;
-                }
-                var symRow = symtab[sym];
-                var symKeyAndOffset = symRow["atStorageKey"].split("+");
-                var symKey = exports.hexStringAs64Nibbles(symKeyAndOffset[0]);
-                var symVal = exports.hexStringAs64Nibbles("0x");
-                if (typeof keyvals[symKey] !== "undefined") {
-                    symVal = keyvals[symKey];
-                }
-                else {
-                    console.log("Undefined storage key: " + symKey);
-                }
-                handledStorage[sym] = handleVar(symRow,symVal);
-            }
-            f(handledStorage);
-        }
-        
-        exports.getStorage(apiURL, address, handleStorage);
-    }
-    // this.retrieve = function(varName,callback) {
-    //     if (typeof symtab[varName] === "undefined") {
-    //         return {};
-    //     }
-    //     var varJson = symtab[varname];
-    //     var varType = varJson["solidityType"];
-
-    //     if (typeof varJson["atStorageKey"] === "undefined") {
-    //         return {};
-    //     }
-    //     var atKey = varJson["atStorageKey"];
-
-    //     var filters = [
-    //         "address=".concat(address),
-    //         "keyhex=".concat(atKey)
-    //     ].join("&");
-    //     var query = "/query/storage?".concat(filters);
-
-    //     var xhr = new XMLHttpRequest();
-    //     xhr.open("GET", query, true);
-    //     xhr.onreadystatechange = function() {
-    //         if (xhr.readyState == 4) {
-    //             if (typeof callback !== 'undefined') {
-    //                 var handledVar = handleVar(varType,xhr.responseText);
-    //                 console.log(handledVar);
-    //                 callback(handledVar);
-    //             }
-
-    //             console.log(xhr.responseText);
-    //         }
-
-    //     }
-    //     xhr.send();
-    // }
     this.address = address;
     this.makeCall = function(functionName, args) { // previously functionNameToData
         function matchesFunctionName(json) {
@@ -177,12 +257,86 @@ exports.Contract = function(address, abi, symtab) {
         
         return dataHex;
     }
-    this.getBalance = function(apiURL, f) {
-        function extractBalance(accountQueryResponse) {
-            return accountQueryResponse[0].balance;
+
+    function Storage() {
+        function makeStorageKeyVals(storageQueryResponse) {
+            var keyvals = {};
+            storageQueryResponse.forEach(function(x) {
+                var canonKey = asInt(x.key);
+                var canonValue = exports.hexStringAs64Nibbles(x.value);
+                keyvals[canonKey] = canonValue;
+            });
+            return keyvals;
         }
-        queryAPI(apiURL + "/query/account?address=" + address, extractBalance, f);
+        this.sync = function(apiURL, f) {
+            set_keyvals = (function(keyvals) {
+                this._keyvals = keyvals;
+                f();
+            }).bind(this)
+            queryAPI(apiURL + "/query/storage?address=" + address,
+                     makeStorageKeyVals, set_keyvals);
+        }
+        this.atKey = function(keyhex) {
+            var keyNum = asInt(keyhex);
+            if (typeof this._keyvals[keyNum] === "undefined") {
+                return exports.hexStringAs64Nibbles("0x");
+            }
+            else {
+                return this._keyvals[keyNum];
+            }
+        }
+        this.chunk = function(startHex, itemsNum) {
+            var startNum = asInt(startHex);
+            var output = [];
+            
+            this._keyvals.keys().sort(function c(x,y) {return x.compare(y);}).map(
+                function(key) {
+                    if (keyNum.ge(startNum) && keyNum.lt(startNum.plus(itemsNum))) {
+                        // Intentional conversion to native numbers
+                        var skipped = keyNum.minus(startNum) - output.length;
+                        for (i = 0; i < skipped; ++i) {
+                            output.push(hexStringAs64Nibbles("0x"));
+                        }
+                        output.push(this._keyvals(key));
+                    }
+                });
+            return output;
+        }
     }
+    this._storage = new Storage();
+
+    this.sync = function (apiURL, f) {
+        var done = false;
+        function doCallbackWhenDone () {
+            if (done) {
+                f();
+            }
+            else {
+                done = true;
+            }
+        }
+        
+        var setVars = (function () {
+            for (var sym in symtab) {
+                if (typeof symtab[sym]["atStorageKey"] === "undefined") {
+                    continue;
+                }
+                this.vars[sym] = handleVar.bind(this)(symtab[sym]);
+            }
+            doCallbackWhenDone();
+        }).bind(this);
+        this._storage.sync(apiURL, setVars);
+        
+        var setBalanceAndNonce = (function (accountQueryResponse) {
+            var firstAccount = accountQueryResponse[0];
+            this.balance = firstAccount.balance;
+            this.nonce   = firstAccount.nonce;
+        }).bind(this);
+        queryAPI(apiURL + "/query/account?address=" + address,
+                 setBalanceAndNonce, doCallbackWhenDone);
+    }
+
+    this.vars = {};
 }
 
 exports.compile = function(apiURL, code, f) {
@@ -194,9 +348,7 @@ exports.compile = function(apiURL, code, f) {
 
     oReq.onload = function () { 
         if(oReq.readyState == 4 && oReq.status == 200) {
-            //console.log(this.responseText);
             var solcResult = JSON.parse(this.responseText);
-            //console.log(solcResult);
             f(solcResult);
         }
         else {
@@ -210,18 +362,18 @@ exports.compile = function(apiURL, code, f) {
 exports.submit = function(apiURL, bin, privKey, gasPrice, gasLimit, f) {
     function getNewContracts (txHashQuery) {
         var txHash = txHashQuery.split('=')[1];
-        //console.log(txHash);
         exports.getContractsCreated(apiURL, txHash, f);
     }
 
     var fromAddress = utils.privateToAddress(new Buffer(privkey.value, 'hex')).toString('hex');
-    //console.log(fromAddress);
-  
-    function push(nonce) {
-        exports.pushTX(nonce, gasPrice, gasLimit, undefined, 0, bin, privKey, apiURL + "/includetransaction", getNewContracts);
+    
+    var fromContract = new exports.Contract(fromAddress, {}, {});
+    function push() {
+        var nonce = fromContract.nonce;
+        exports.pushTX(nonce, gasPrice, gasLimit, undefined, 0, bin, privKey,
+                       apiURL + "/includetransaction", getNewContracts);
     }
-
-    exports.getNonce(apiURL, fromAddress, push);
+    fromContract.sync(apiURL, push);
 }
 
 function queryAPI (queryURL, handleResponse, callback) {
@@ -230,7 +382,6 @@ function queryAPI (queryURL, handleResponse, callback) {
     oReq.onload = function () { 
         if(oReq.readyState == 4 && oReq.status == 200) {
 	    var response = JSON.parse(this.responseText)
-            console.log(response);
             callback(handleResponse(response));
 	}
         else {
@@ -241,32 +392,6 @@ function queryAPI (queryURL, handleResponse, callback) {
     oReq.send();
 }
 
-function getSomeStorage(queryURL, handleStorageKeyVals, f) {
-    function makeStorageKeyVals(storageQueryResponse) {
-        var keyvals = {};
-        storageQueryResponse.forEach(function(x) {
-            var canonKey = exports.hexStringAs64Nibbles(x.key);
-            var canonValue = exports.hexStringAs64Nibbles(x.value);
-            keyvals[canonKey] = canonValue;
-        });
-        return keyvals;
-    }    
-    function handleStorage (storageQueryResponse) {
-        return handleStorageKeyVals(makeStorageKeyVals(storageQueryResponse));
-    }
-    queryAPI(queryURL, handleStorage, f);
-}
-
-exports.getStorage = function(apiURL, address, f) {
-    getSomeStorage(apiURL + "/query/storage?address=" + address,
-                   function g(x) {return x}, f);
-}
-
-exports.getStorageKey = function(apiURL, address, keyhex, f) {
-    getSomeStorage(apiURL + "/query/storage?address=" + address
-                   + "&keyhex=" + keyhex, function g(x) {}, f);
-}
-
 exports.getContractsCreated = function(apiURL, txHash, f) {
     function firstContractCreated(transactionResultResponse) {
         return transactionResultResponse[0].contractsCreated.split(",")[0];
@@ -275,15 +400,6 @@ exports.getContractsCreated = function(apiURL, txHash, f) {
     alert("Push OK to get contracts");
     queryAPI(apiURL + "/transactionResult/" + txHash,
                      firstContractCreated, f);
-}
-
-exports.getNonce = function(apiURL, address, f) {
-    function firstNonce(accountQueryResponse) {
-        return accountQueryResponse[0].nonce;
-    }
-
-    queryAPI(apiURL + "/query/account?address=" + address,
-                     firstNonce, f);
 }
 
 exports.pushTX  = function(nonce,gasPrice,gasLimit,toAddress,value,data,privKey,url,f)  {
@@ -346,7 +462,6 @@ exports.pushTX  = function(nonce,gasPrice,gasLimit,toAddress,value,data,privKey,
     }
 
     var txString = JSON.stringify(js);
-    //console.log(txString);
     xhr.send(txString);
 }
 
@@ -435,4 +550,3 @@ exports.arrayIndexToLookup = function(index) {
   var words = CryptoJS.enc.Hex.parse(index);
   return CryptoJS.SHA3(words, { outputLength: 256}).toString(CryptoJS.enc.Hex);
 }
-
