@@ -1,13 +1,10 @@
-var Ethereum = require('../index.js');
 var Web3Coder = require('web3/lib/solidity/coder');
 var CryptoJS = require('crypto-js')
-var Transaction = Ethereum.Transaction;
+var Transaction = require('ethereumjs-tx')
 var BigInt = require('big-integer');
 var utf8 = require('utf8');
+var utils = require('ethereumjs-util');
 //var BigNum = require('bignumber');
-
-var rlp = Ethereum.rlp;
-var utils = Ethereum.utils;
 
 function asInt(hexString) {
     if (hexString.length >= 2 && hexString.slice(0,2) == "0x") {
@@ -328,6 +325,7 @@ exports.Contract = function(address, abi, symtab) {
         this._storage.sync(apiURL, setVars);
         
         var setBalanceAndNonce = (function (accountQueryResponse) {
+            console.log(accountQueryResponse);
             var firstAccount = accountQueryResponse[0];
             this.balance = firstAccount.balance;
             this.nonce   = firstAccount.nonce;
@@ -365,7 +363,7 @@ exports.submit = function(apiURL, bin, privKey, gasPrice, gasLimit, f) {
         exports.getContractsCreated(apiURL, txHash, f);
     }
 
-    var fromAddress = utils.privateToAddress(new Buffer(privkey.value, 'hex')).toString('hex');
+    var fromAddress = utils.privateToAddress(new Buffer(privKey, 'hex')).toString('hex');
     
     var fromContract = new exports.Contract(fromAddress, {}, {});
     function push() {
@@ -373,6 +371,7 @@ exports.submit = function(apiURL, bin, privKey, gasPrice, gasLimit, f) {
         exports.pushTX(nonce, gasPrice, gasLimit, undefined, 0, bin, privKey,
                        apiURL + "/includetransaction", getNewContracts);
     }
+
     fromContract.sync(apiURL, push);
 }
 
