@@ -325,7 +325,6 @@ exports.Contract = function(address, abi, symtab) {
         this._storage.sync(apiURL, setVars);
         
         var setBalanceAndNonce = (function (accountQueryResponse) {
-            console.log(accountQueryResponse);
             var firstAccount = accountQueryResponse[0];
             this.balance = firstAccount.balance;
             this.nonce   = firstAccount.nonce;
@@ -358,9 +357,24 @@ exports.compile = function(apiURL, code, f) {
 }
 
 exports.submit = function(apiURL, bin, privKey, gasPrice, gasLimit, f) {
-    function getNewContracts (txHashQuery) {
-        var txHash = txHashQuery.split('=')[1];
+    function getNewContracts (txHash) {
         exports.getContractsCreated(apiURL, txHash, f);
+    }
+
+    exports.send(apiURL, bin, privKey, undefined, gasPrice, gasLimit, 0, getNewContracts);
+}
+
+exports.send = function(apiURL, data, privKey, toAddress, gasPrice, gasLimit, value, f) {
+    function poll (txHash) {
+        function checkTX () {
+            queryAPI(apiURL + "/query/transaction?hash=" + txHash, function () {}, cancelPollAndCallback);            
+        }
+        function cancelPollAndCallback () {
+            clearInterval(poller);
+            f(txHash);
+        }
+        
+        var poller = setInterval(checkTX, 500);
     }
 
     var fromAddress = utils.privateToAddress(new Buffer(privKey, 'hex')).toString('hex');
@@ -368,8 +382,8 @@ exports.submit = function(apiURL, bin, privKey, gasPrice, gasLimit, f) {
     var fromContract = new exports.Contract(fromAddress, {}, {});
     function push() {
         var nonce = fromContract.nonce;
-        exports.pushTX(nonce, gasPrice, gasLimit, undefined, 0, bin, privKey,
-                       apiURL + "/includetransaction", getNewContracts);
+        exports.pushTX(nonce, gasPrice, gasLimit, toAddress, value, data, privKey,
+                       apiURL + "/includetransaction", poll);
     }
 
     fromContract.sync(apiURL, push);
@@ -456,7 +470,7 @@ exports.pushTX  = function(nonce,gasPrice,gasLimit,toAddress,value,data,privKey,
 
     xhr.onreadystatechange = function() {
         if (xhr.readyState == 4 && xhr.status == 200) {
-	    f(xhr.responseText);
+	    f(js.hash);
         }
     }
 
