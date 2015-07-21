@@ -16,7 +16,7 @@ All functionality is included in the `blockapps-js` module:
 
 ```js
 var blockapps = require('blockapps');
-// stripe.{ RESOURCE_NAME }.{ METHOD_NAME }
+// blockapps.{ RESOURCE_NAME }.{ METHOD_NAME }
 ```
 
 Every method accepts an optional callback as the last argument:
