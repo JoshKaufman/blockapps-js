@@ -4,7 +4,7 @@ blockapps-js is a library that exposes a number of functions for interacting wit
 
 ## Installation
 
-`npm install stripe`
+`npm install blockapps`
 
 ## Documentation
 
