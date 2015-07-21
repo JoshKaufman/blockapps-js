@@ -1,0 +1,9 @@
+module.exports.Contract = require("Contract.js");
+module.exports.Transaction = require("Transaction.js");
+module.exports.Solidity = require("Solidity.js");
+module.exports.types.Int = require("Int.js");
+module.exports.types.Enum = require("Enum.js");
+module.exports.types.Bytes = require("Bytes.js");
+module.exports.types.Bool = require("Bool.js");
+module.exports.types.Address = require("Address.js");
+moudule.exports.internal.Storage = require("Storage.js");
