@@ -40,18 +40,18 @@ All of the functions below take an "apiURL", which indicates from what server th
 
 ### Available resources & methods
 
-* contract
+* contract({address,abi,symtab})
   * [`storage()`](http://blockapps.net/apidocs)
-  * [`address()`](http://blockapps.net/apidocs)
   * [`call(methodName, data)`](http://blockapps.net/apidocs)
   * [`balance()`](http://blockapps.net/apidocs)
-* transaction
-  * [`push(nonce, gasPrice, to, value, data, privateKey)`](http://blockapps.net/apidocs)
-  * [`send(to, value, privateKey)`](http://blockapps.net/apidocs)
-  * [`createdContracts(hash)`](http://blockapps.net/apidocs)
-* solidity
+* transaction({privateKey})
+  * [`_push(nonce, gasPrice, to, value, data, privateKey)`](http://blockapps.net/apidocs)
+  * [`send(to, value)`](http://blockapps.net/apidocs)
+  * [`createContract(value,data)`](http://blockapps.net/apidocs)
+  * [`result(hash)`](http://blockapps.net/apidocs)
+* solidity({src,privateKey})
   * [`compile(src)`](http://blockapps.net/apidocs)
-  * [`contract(src,privateKey)`](http://blockapps.net/apidocs)
+  * [`contract(src)`](http://blockapps.net/apidocs)
  
 ## More information / wikis
 
