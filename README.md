@@ -69,8 +69,8 @@ function displayContract(contract) {
         // but illustrates how to use it to query the state variables.
         abidata.value = "Balance: " + contract.balance;
         abidata.value += "\n\nContract state variables:"
-        for (var sym in contract.get) {
-            val = contract.get[sym]
+        for (var sym in contract.getVar) {
+            val = contract.getVar[sym]
             abidata.value += "\n" + sym + " = " + val;
             if (val.isMapping) {
                 abidata.value += " : 1729 => " + val(api.Types.Int(1729));
@@ -117,23 +117,23 @@ Solidity code, as described below.  It has the following structure.
   * `contract.sync(apiURL, callback)`: queries the Blockapps node at
     `apiURL` for the current storage contents of the contract, thus
     updating the values of all variables, then calls `callback()`.
-  * `contract.get(apiURL, callback, varName)`: first synchronizes as
+  * `contract.getVar(apiURL, callback, varName)`: first synchronizes as
     above, then calls `callback` on the value of variable called
     `varName` in the Solidity source code.
-    * `contract.get[varName]`: directly returns the value of
+    * `contract.getVar[varName]`: directly returns the value of
       `varName`, current as of the last call to `contract.sync` or
-      `contract.get`, but does *not* update the storage.
-  * `contract.call(apiURL, callback, { funcName:<string>, fromAccount:<Contract>,
+      `contract.getVar`, but does *not* update the storage.
+  * `contract.callFunc(apiURL, callback, { funcName:<string>, fromAccount:<Contract>,
     value:<ether amount>, gasPrice:<ether amount>, gasLimit:<ether
     amount> }, args..)`: if `funcName` is the name of a function
     defined in the Solidity source, this sends a message transaction
     "calling" that function on the list of arguments `args..`, with
     the parameters given.  It then calls `callback(<retVal>)` on the
     function's return value, if any.
-    * `contract.call[funcName]`: the Javascript function `f`
+    * `contract.callFunc[funcName]`: the Javascript function `f`
       accomplishing the above, which is equivalent to `f(apiURL,
       callback, argObj, args..)`, where `argObj` is the object passed
-      to `contract.call`.
+      to `contract.callFunc`.
 
 ### Solidity
 
