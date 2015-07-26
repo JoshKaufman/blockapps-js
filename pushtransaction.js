@@ -450,7 +450,7 @@ exports.pushTX  = function(nonce,gasPrice,gasLimit,toAddress,value,data,privKey,
         };
     }
     else {
-        tx.sign(privateKey);
+       tx.sign(privateKey);
         js = {
             from : tx.getSenderAddress().toString('hex'),
             nonce : utils.bufferToInt(tx.nonce),
@@ -464,6 +464,8 @@ exports.pushTX  = function(nonce,gasPrice,gasLimit,toAddress,value,data,privKey,
             hash : tx.hash().toString('hex')
         };
     }
+    console.log("pushTX tx:");
+    console.log(tx);
     var xhr = new XMLHttpRequest();
     xhr.open("POST", url, true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');   
