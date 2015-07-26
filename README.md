@@ -107,7 +107,7 @@ The third, most featureful type of contract is constructed from
 Solidity code, as described below.  It has the following structure.
 
 * Solidity contract: `var contract = Contract({address: 0x<20 bytes>,
-  symtab: <symtab>}).  This object mirrors the syntactic declarations
+  symtab: <symtab>})`.  This object mirrors the syntactic declarations
   of the Solidity code that it was constructed from.
   * `contract.address`: the Ethereum address, passed in the
     constructor (determined from the creating account's address and
