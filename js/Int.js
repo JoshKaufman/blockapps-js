@@ -1,25 +1,46 @@
 module.exports = Int;
-module.exports.exp2 = function(n) { return Int(Int(1).shiftLeft(n)); }
 
 function Int(x) {
-    var bigInt = require("big-integer");
-    var y;
-    if (typeof x === "string" && x.slice(0,2) === "0x") {
-        y = bigInt(x.slice(2),16);
-    }
-    else if (Buffer.isBuffer(x)) {
-        y = bigInt(x.toString("hex"),16);
+    if (x instanceof Int) {
+        var bigInt = require('big-integer');
+        var y;
+        if (typeof x === "string" && x.slice(0,2) === "0x") {
+            y = bigInt(x.slice(2),16);
+        }
+        else if (Buffer.isBuffer(x)) {
+            y = bigInt(x.toString("hex"),16);
+        }
+        else {
+            y = bigInt(x);
+        }
+
+        // Two's complement negation
+        var symRow = x.type["solidityType"];
+        if (y.geq(0) && symRow[0] != 'u') {
+            var bitSize = parseInt(symRow["bytesUsed"],16) * 8;
+            var topBitInt = asUInt.and(SolTypes.Int.exp2(bitSize - 1));
+            y = y.minus(topBitInt).minus(topBitInt);
+        }
+
+        var constr = pickConstructor(y);
+        return new constr(y);
     }
     else {
-        y = bigInt(x);
+        if (x.decode !== undefined) {
+            return decodingInt(x);
+        }
+        else {
+            return new Int(x);
+        }
     }
+}
 
-    var constr = pickConstructor(y);
-    return new constr(y);
+function exp2(n) {
+    return Int(Int(1).shiftLeft(n));
 }
 
 function pickConstructor(y) {
-    var bigInt = require("big-integer");
+    var bigInt = require('big-integer');
     var smallInt = bigInt(0);
     var smallIntProto = Object.getPrototypeOf(smallInt);
     var SmallInteger = smallIntProto.constructor;
@@ -74,14 +95,14 @@ function prototypeInt (baseProto, constr) {
             value : true
         },
         constructor : {
-            value : constr,
+            value : Int,
             enumerable : false
         }
     });
 };
 
 function encodingInt() {
-    var bigInt = require("big-integer");
+    var bigInt = require('big-integer');
     var result;
     if (this.geq(0)) {
         bigIntProto = Object.getPrototypeOf(Object.getPrototypeOf(this));
@@ -96,5 +117,16 @@ function encodingInt() {
     else {
         result = Int(this.plus(Int.exp2(256))).encoding();
     }
+    return result;
+}
+
+function decodingInt(x) {
+    var result = new Int(x.slice(0,64));
+    Object.defineProperties(result, {
+        decodeTail : {
+            value : x.slice(64),
+            enumerable : false
+        }
+    });
     return result;
 }

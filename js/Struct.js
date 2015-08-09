@@ -1,13 +1,18 @@
 module.exports = Struct;
 
-function Struct(jsStruct) {
+function Struct(x) {
     if (this instanceof Struct) {
-        for (var key in jsStruct) {
-            this[key] = jsStruct[key];
+        for (var key in x) {
+            this[key] = x[key];
         }
     }
     else {
-        return new Struct(jsStruct);
+        if (x.decode !== undefined) {
+            return decodingStruct(x);
+        }
+        else {
+            return new Struct(x);
+        }
     }
 }
 

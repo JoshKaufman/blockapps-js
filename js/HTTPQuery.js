@@ -1,6 +1,7 @@
 module.exports = {
     queryAPI : queryAPI,
-    postAPI : postAPI
+    postAPI : postAPI,
+    apiPrefix : "" //"/eth/v1.0"
 }
 
 function queryAPI (queryURL, callback) {

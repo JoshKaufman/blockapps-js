@@ -37,7 +37,12 @@ function Address(x) {
         return result;
     }
     else {
-        return new Address(x);
+        if (x.decode !== undefined) {
+            return decodingAddress(x);
+        }
+        else {
+            return new Address(x);
+        }
     }
 }
 
@@ -50,6 +55,17 @@ function encodingAddress() {
     for (var i = 0; i < 12; ++i) {
         result = "00" + result;
     }
+    return result;
+}
+
+function decodingAddress(x) {
+    var result = new Address(x.slice(0,64));
+    Object.defineProperties(result, {
+        decodeTail : {
+            value : x.slice(64),
+            enumerable : false
+        }
+    });
     return result;
 }
 

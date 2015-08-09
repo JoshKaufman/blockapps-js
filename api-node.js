@@ -1,12 +1,12 @@
 module.exports = {
-    Contract    : require("Contract.js"),
-    Transaction : require("Transaction.js"),
-    Solidity    : require("Solidity.js"),
-    Types       : require("SolTypes.js"),
+    Contract    : require("./js/Contract.js"),
+    Transaction : require("./js/Transaction.js"),
+    Solidity    : require("./js/Solidity.js"),
     Internal : {
-        Storage : require("Storage.js"),
-        EthWord : require("EthWord.js"),
-        Crypto  : require("Crypto.js"),
+        Types   : require("./js/SolTypes.js"),
+        Storage : require("./js/Storage.js"),
+        EthWord : require("./js/EthWord.js"),
+        Crypto  : require("./js/Crypto.js"),
     }
 };
 

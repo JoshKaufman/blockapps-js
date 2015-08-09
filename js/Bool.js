@@ -5,7 +5,12 @@ function Bool(bool) {
         Boolean.call(this,bool);
     }
     else {
-        return new Bool(bool);
+        if (x.decode !== undefined) {
+            return decodeBool(x);
+        }
+        else {
+            return new Bool(bool);
+        }
     }
 }
 
@@ -39,4 +44,15 @@ function encodingBool() {
         result = "00" + result;
     }
     return result;
+}
+
+function decodingBool(x) {
+    var result = new Bool(x.slice(0,64)[-1] === '1');
+    Object.defineProperties(result, {
+        decodeTail : {
+            value : x.slice(64),
+            enumerable : false
+        }
+    });
+    return result;    
 }

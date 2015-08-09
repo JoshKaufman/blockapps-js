@@ -1,10 +1,11 @@
-var Bytes = require("Bytes.js")
-var nodeString = require("string")
+var Bytes = require("./Bytes.js")
+var nodeString = require('string')
 
 module.exports = SolString
 
 function SolString(jsString) {
     if (this instanceof SolString) {
+        // What is this?  I don't know what I was thinking here.
         this.setValue(jsString);
     }
     else {
@@ -30,4 +31,8 @@ Object.defineProperties(SolString.prototype, {constructor : {enumerable:false}})
 
 function encodingString() {
     return Bytes(new Buffer(this.toString(), "utf8")).encoding();
+}
+
+function decodingString() {
+    // This class is broken anyway
 }

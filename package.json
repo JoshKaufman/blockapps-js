@@ -1,0 +1,35 @@
+{
+    "name":"blockapps-api",
+    "version":"1.0.0",
+    "description":"Interface to the Ethereum blockchain providing contract creation and transactions, state inspection, and dApp registration and management",
+    "keywords":["ethereum","blockchain","blockapps","dapp"],
+    "homepage":"https://github.com/blockapps/js-lib",
+    "bugs":{
+        "url":"https://github.com/blockapps/js-lib/issues",
+        "email":"ryan.reich@consensys.net"
+    },
+    "license":"MIT",
+    "author":{
+        "name":"Ryan Reich",
+        "email":"ryan.reich@consensys.net",
+        "url":"https://github.com/ryanreich"
+    },
+    "contributors":{
+        "name":"BlockApps team",
+        "url":"http://blockapps.net"
+    },
+    "files":["js/","api-node.js"],
+    "main":"api-node",
+    "repository":{
+        "type":"git",
+        "url":"https://github.com/blockapps/js-lib/js-lib.git"
+    },
+    "dependencies":{
+        "ethereumjs-tx":"",
+        "ethereumjs-util":"",
+        "string":"",
+        "big-integer":"",
+        "enum":"",
+        "crypto-js":">=3.1"
+    }
+}

@@ -1,7 +1,7 @@
 var ethTransaction = require('ethereumjs-tx');
 var utils = require('ethereumjs-util');
-var HTTPQuery = require("HTTPQuery.js");
-var Address = require("Address.js");
+var HTTPQuery = require("./HTTPQuery.js");
+var Address = require("./Address.js");
 
 module.exports = Transaction;
 
@@ -44,7 +44,8 @@ function getContractCreated(apiURL, callback) {
         }
     }
 
-    HTTPQuery.queryAPI(apiURL + "/transactionResult/" + this.hash,
+    HTTPQuery.queryAPI(apiURL + HTTPQuery.apiPrefix +
+                       "/transactionResult/" + this.hash,
                        firstContractCreated);
 }
 
@@ -79,7 +80,8 @@ function sendTransaction(apiURL, callback) {
         var poller = setInterval(pollTX.bind(this), 500);
         function pollTX () {
             HTTPQuery.queryAPI(
-                apiURL + "/query/transaction?hash=" + this.hash,
+                apiURL + HTTPQuery.apiPrefix +
+                    "/transaction?hash=" + this.hash,
                 checkTXPosted.bind(this)
             );
         }
@@ -98,7 +100,8 @@ function sendTransaction(apiURL, callback) {
                           "codeOrData","r","s","v","hash"];
         this.value = this.value.toString(); // Stupid
         var txString = JSON.stringify(this, jsonFields);
-        HTTPQuery.postAPI(apiURL + "/includetransaction", txString,
+        HTTPQuery.postAPI(apiURL + HTTPQuery.apiPrefix +
+                          "/transaction", txString,
                           'application/json; charset=UTF-8',
                           pollAndCallback.bind(this)
                          );

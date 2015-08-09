@@ -1,9 +1,9 @@
-var nodeEnum = require("enum");
-var Int = require("Int");
+var nodeEnum = require('enum');
+var Int = require("./Int");
 
 module.exports = Enum;
 
-function Enum (nameMap) {
+function Enum (nameMap) {    
     var enumType = new nodeEnum(nameMap);
     Object.defineProperties(enumType, {
         size        : { enumerable : false },
@@ -24,7 +24,12 @@ function Enum (nameMap) {
             Object.defineProperties(this, {_options : {enumerable : false}});
         }
         else {
-            return new EnumItem(x);
+            if (x.decode !== undefined) {
+                return decodingEnum(x);
+            }
+            else {
+                return new EnumItem(x);
+            }
         }
     }
     EnumItem.prototype = Object.create(
@@ -48,4 +53,8 @@ function Enum (nameMap) {
     Object.defineProperties(EnumItem.prototype, {constructor : {enumerable:false}});
 
     return EnumItem;
+}
+
+function decodingEnum(x) {
+    return Enum(Int(x).valueOf());
 }

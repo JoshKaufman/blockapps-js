@@ -1,14 +1,14 @@
 module.exports = {
-    Address : require("Address"),
-    Array : require("Array"),
-    Bool : require("Bool"),
-    Bytes : require("Bytes"),
-    Enum : require("Enum"),
-    Function : require("Function"),
-    Int : require("Int"),
-    Mapping : require("Mapping"),
-    String : require("String"),
-    Struct : require("Struct"),
+    Address : require("./Address"),
+    Array : require("./Array"),
+    Bool : require("./Bool"),
+    Bytes : require("./Bytes"),
+    Enum : require("./Enum"),
+    Function : require("./Function"),
+    Int : require("./Int"),
+    Mapping : require("./Mapping"),
+    String : require("./String"),
+    Struct : require("./Struct"),
     solNameToSolType : solNameToSolType
 }
 

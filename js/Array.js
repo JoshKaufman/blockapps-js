@@ -1,10 +1,11 @@
-var Int = require("Int.js");
+var Int = require("./Int.js");
+var typeify = require("./typeify.js");
 
 module.exports = SolArray;
 
-function SolArray(jsArr, isFixed) {
-    if (isFixed === undefined) {
-        isFixed = true;
+function SolArray(jsArr) {
+    if (x.isFixed === undefined) {
+        x.isFixed = true;
     }
     if (this instanceof SolArray) {
         this.isFixed = isFixed;
@@ -13,7 +14,12 @@ function SolArray(jsArr, isFixed) {
         }
     }
     else {
-        return new SolArray(jsArr, isFixed);
+        if (x.decode !== undefined) {
+            return decodingArray(x);
+        }
+        else {
+            return new SolArray(jsArr, isFixed);
+        }
     }
 }
 
@@ -75,4 +81,35 @@ function encodingArray() {
     }
 
     return enc;
+}
+
+// Only does homogeneous arrays
+function decodingArray(x) {
+    var eltRow = x.decode["arrayElement"];
+    var length;
+    if (x.isFixed) {
+        length = x.decode["arrayLength"];
+    }
+    else {
+        var tmp = Int(x);
+        length = tmp.valueOf();
+        x = tmp.decodeTail.slice(length * 64); // Drop the "heads"
+    }
+
+    var result = [];
+    while (result.length < length) {
+        x.decode = true;
+        x.type = eltRow;
+        var tmp = typeify(x);
+        x = tmp.decodeTail;
+        result.push(tmp);
+    }
+
+    Object.defineProperties(result, {
+        decodeTail : {
+            value : x,
+            enumerable : false
+        }
+    });
+    return new Array(result);
 }

@@ -1,6 +1,6 @@
-var Contract = require("Contract.js");
-var Transaction = require("Transaction.js");
-var HTTPQuery = require("HTTPQuery.js");
+var Contract = require("./Contract.js");
+var Transaction = require("./Transaction.js");
+var HTTPQuery = require("./HTTPQuery.js");
 
 module.exports = Solidity;
 
@@ -64,6 +64,7 @@ function compileSolidity(apiURL, callback) {
         }
     }
 
-    HTTPQuery.postAPI(apiURL + "/solc", "src=" + encodeURIComponent(this.code),
+    HTTPQuery.postAPI(apiURL + HTTPQuery.apiPrefix +
+                      "/solc", "src=" + encodeURIComponent(this.code),
                       "application/x-www-form-urlencoded", getSolc.bind(this));
 }

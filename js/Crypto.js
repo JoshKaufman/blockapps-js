@@ -1,5 +1,5 @@
-var SHA3 = require("crypto-js/sha3");
-var parseHex = require("crypto-js").enc.Hex.parse
+var SHA3 = require('crypto-js/sha3');
+var parseHex = require('crypto-js').enc.Hex.parse
 
 module.exports = {
     sha3 : sha3,

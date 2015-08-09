@@ -1,6 +1,6 @@
-var Int = require("Int.js");
-var EthWord = require("EthWord.js");
-var HTTPQuery = require("HTTPQuery.js");
+var Int = require("./Int.js");
+var EthWord = require("./EthWord.js");
+var HTTPQuery = require("./HTTPQuery.js");
 
 module.exports = Storage;
 
@@ -54,7 +54,8 @@ function setStorageKeyVals(apiURL, f) {
         this._keyvals = keyvals;
         f();
     }
-    HTTPQuery.queryAPI(apiURL + "/query/storage?address=" + this._address,
+    HTTPQuery.queryAPI(apiURL + HTTPQuery.apiPrefix +
+                       "/storage?address=" + this._address,
                        setKeyvals.bind(this));
 }
 

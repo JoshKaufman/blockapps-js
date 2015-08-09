@@ -1,4 +1,4 @@
-var Int = require("Int.js");
+var Int = require("./Int.js");
 
 module.exports = EthWord;
 module.exports.zero = EthWord.bind(undefined, "0");

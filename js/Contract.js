@@ -1,11 +1,11 @@
-var SolTypes = require("SolTypes.js");
-var Storage = require("Storage.js");
-var Transaction = require("Transaction.js");
-var HTTPQuery = require("HTTPQuery.js");
-var EthWord = require("EthWord.js");
+var SolTypes = require("./SolTypes.js");
+var Storage = require("./Storage.js");
+var Transaction = require("./Transaction.js");
+var HTTPQuery = require("./HTTPQuery.js");
+var EthWord = require("./EthWord.js");
 
 var privateToAddress = require('ethereumjs-util').privateToAddress;
-var sha3 = require("Crypto.js").sha3;
+var sha3 = require("./Crypto.js").sha3;
 
 module.exports = Contract;
 
@@ -95,7 +95,8 @@ function syncAccount(apiURL, f) {
         }
     }
 
-    HTTPQuery.queryAPI(apiURL + "/query/account?address=" + this.address,
+    HTTPQuery.queryAPI(apiURL + HTTPQuery.apiPrefix +
+                       "/account?address=" + this.address,
                        setBalanceAndNonce.bind(this));
 }
 
