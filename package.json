@@ -30,6 +30,8 @@
         "string":"",
         "big-integer":"",
         "enum":"",
-        "crypto-js":">=3.1"
+        "crypto-js":">=3.1",
+        "request":"",
+        "browser-request":""
     }
 }

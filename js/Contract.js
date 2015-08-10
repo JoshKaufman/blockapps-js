@@ -26,8 +26,8 @@ function Contract(argObj) {
         }
         else if (argObj.address !== undefined) {
             this.address = SolTypes.Address(argObj.address);
-            this.getVar = getSingleVar;
-            this.callFunc = callFunc;
+            this.get = getSingleVar;
+            this.call = call;
             this._storage = Storage(this.address);
 
             this.sync = syncContract.bind(this, argObj.symtab);
@@ -53,11 +53,11 @@ function getSingleVar(apiURL, callback, varName) {
 // argObj = {
 //   funcName:, fromAccount:, value:, gasPrice, gasLimit
 // }
-function callFunc(apiURL, callback, argObj) {
+function call(apiURL, callback, argObj) {
     var funcName = argObj.funcName;
-    if (this.callFunc[funcName] !== undefined) {
+    if (this.call[funcName] !== undefined) {
         delete argObj.funcName;
-        this.callFunc[funcName].apply(this,arguments);
+        this.call[funcName].apply(this,arguments);
     }
     else {
         return null;
@@ -95,16 +95,19 @@ function syncAccount(apiURL, f) {
         }
     }
 
-    HTTPQuery.queryAPI(apiURL + HTTPQuery.apiPrefix +
-                       "/account?address=" + this.address,
-                       setBalanceAndNonce.bind(this));
+    HTTPQuery({
+        "serverURI":apiURL,
+        "queryPath":"/query/account",
+        "get":{"address":this.address},
+        "callback":setBalanceAndNonce.bind(this)
+    });
 }
 
 function setFuncs(symtab) {
     for (var sym in symtab) {
         var symRow = symtab[sym];
         if (symRow["functionHash"] !== undefined) { // Only functions
-            this.callFunc[sym] = SolTypes.Function(this, symRow);
+            this.call[sym] = SolTypes.Function(this, symRow);
         }
     }
 }
@@ -113,7 +116,7 @@ function setVars(symtab) {
     for (var sym in symtab) {
         // Skip type declarations and functions
         if (symtab[sym]["atStorageKey"] !== undefined) {
-            this.getVar[sym] = handleVar.bind(this)(symtab[sym], symtab);
+            this.get[sym] = handleVar.bind(this)(symtab[sym], symtab);
         }
     }
 }
@@ -174,8 +177,8 @@ function handleFixedArray(symRow, symtab) {
             eltRow["atStorageOffset"] = (eltSize + oldOff).toString(16);
         }
     }
-
-    return SolTypes.Array(result, true);
+    result.isFixed = true;
+    return SolTypes.Array(result);
 }
 function handleDynamicArray(symRow, symtab) {
     var key = EthWord(symRow["atStorageKey"]);
@@ -236,7 +239,9 @@ function handleSimpleType(symRow) {
     var intBytes = parseInt(symRow["bytesUsed"],16);
 
     var nibbles = this._storage.atKey(symKey);
-    var usedNibbles = nibbles.slice(-(intBytes + intOffset), nibbles.length - intOffset);
+    var usedNibbles = nibbles.slice(-(intBytes + intOffset)).slice(0,intBytes);
+    usedNibbles.type = symRow;
+    usedNibbles.isFixed = true;
     
     var prefix =
         arguments[1] === undefined ?
@@ -245,20 +250,15 @@ function handleSimpleType(symRow) {
 
     switch (prefix) {
     case 'bool' :
-        var zeros = new Buffer(32);
+        var zeros = new Buffer(intBytes);
         zeros.fill(0);
-        return SolTypes.Bool(usedNibbles.equals(zeros));
+        return SolTypes.Bool(!usedNibbles.equals(zeros));
     case 'address' :
         return SolTypes.Address(usedNibbles);
-    case 'uint':
+    case 'uint': case 'int':
         return SolTypes.Int(usedNibbles);
-    case 'int':
-        var asUInt = SolTypes.Int(usedNibbles);
-        var bitSize = parseInt(symRow["bytesUsed"],16) * 8;
-        var topBitInt = asUInt.and(SolTypes.Int.exp2(bitSize - 1));
-        return SolTypes.Int(asUInt.minus(topBitInt).minus(topBitInt));
     case 'bytes':
-        return SolTypes.Bytes(usedNibbles, true);
+        return SolTypes.Bytes(usedNibbles);
     case 'enum':
         return SolTypes.Enum(arguments[1])(usedNibbles.toString("hex"));
     // case 'real': case 'ureal':

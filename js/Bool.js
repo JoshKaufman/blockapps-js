@@ -1,42 +1,16 @@
 module.exports = Bool;
 
-function Bool(bool) {
-    if (this instanceof Bool) {
-        Boolean.call(this,bool);
+function Bool(x) {
+    if (x.decode !== undefined) {
+        return decodingBool(x);
     }
-    else {
-        if (x.decode !== undefined) {
-            return decodeBool(x);
-        }
-        else {
-            return new Bool(bool);
-        }
-    }
+    var result = Boolean(x);
+    result.toString = function () { return Boolean(x).toString(); };
+    result.encoding = encodingBool;
+    result.toJSON = function () { return this.toString(); };
+    result.isFixed = true;
+    return result;
 }
-
-Bool.prototype = Object.create(
-    Boolean.prototype,
-    {
-        toString: {
-            value : function () { return Boolean(x).toString(); },
-            enumerable : true
-        },
-        encoding: {
-            value : encodingBool,
-            enumerable : true
-        },
-        toJSON: {
-            value : function () { return this.toString(); },
-            enumerable: true
-        },
-        isFixed : {
-            value: true,
-            enumerable: true
-        }
-    }
-);
-Bool.prototype.constructor = Bool;
-Object.defineProperties(Bool.prototype, {constructor : {enumerable : false}});
 
 function encodingBool() {
     var result = this ? "01" : "00";

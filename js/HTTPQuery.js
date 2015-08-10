@@ -1,45 +1,45 @@
-module.exports = {
-    queryAPI : queryAPI,
-    postAPI : postAPI,
-    apiPrefix : "" //"/eth/v1.0"
-}
+var request = require("request");
 
-function queryAPI (queryURL, callback) {
-    var oReq = new XMLHttpRequest();
-    oReq.open("GET", queryURL, true);
-    oReq.onload = function () { 
-        if(oReq.readyState == 4 && oReq.status == 200) {
-            if (typeof callback === "function") {
-	        var response = JSON.parse(this.responseText)
-                callback(response);
+module.exports = HTTPQuery;
+
+// blockappsQueryObj = {
+//   serverURI: <blockapps node address>
+//   queryPath: <blockapps query route>
+//   callback : <function to handle the JSON-parsed reply>
+//   get|post : <list of {name:,value:} query parameters>
+// }
+
+function HTTPQuery(blockappsQueryObj) {
+    var apiPrefix = "" //"/eth/v1.0"
+    
+    var options = {
+        "baseUrl":blockappsQueryObj.serverURI + apiPrefix,
+        "uri":blockappsQueryObj.queryPath,
+        "json":true
+    };
+    if (blockappsQueryObj["get"]) {
+        options.method = "GET";
+        options.qs = blockappsQueryObj.get;
+    }
+    else if (blockappsQueryObj["post"]) {
+        options.method = "POST";
+        options.form = blockappsQueryObj.post;
+    }
+    else if (blockappsQueryObj["data"]) {
+        options.method = "POST";
+        options.body = blockappsQueryObj.data;
+    }
+    
+    function httpCallback(error, response, body) {
+        if(response && response.statusCode == 200) {
+            if (typeof blockappsQueryObj.callback === "function") {
+                blockappsQueryObj.callback(body);
             }
-	}
-        else {
-            console.log(this.responseText);
-        }
-    }
-
-    oReq.send();
-}
-
-function postAPI(postURL, data, contentType, callback) {
-    var oReq = new XMLHttpRequest();
-    oReq.open("POST", postURL, true);
-
-    if (contentType !== undefined) {
-        oReq.setRequestHeader("Content-type", contentType);
-    }
-
-    oReq.onload = function () { 
-        if(oReq.readyState == 4 && oReq.status == 200) {
-            if (typeof callback === "function") {
-                callback(this.responseText);
-            }
         }
         else {
-            console.log(this.responseText);            
+            console.log(error);
         }
     }
 
-    oReq.send(data);
+    request(options, httpCallback);
 }

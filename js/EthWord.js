@@ -7,7 +7,6 @@ module.exports.isEthWord = Buffer.isBuffer;
 
 function EthWord(x) {
     var hexString = x.slice(0);
-    var result = new Buffer(32);
     if (hexString.slice(0,2) === "0x") {
         hexString = hexString.slice(2);
     }
@@ -18,9 +17,11 @@ function EthWord(x) {
     var numBytes = hexString.length / 2
 
     if (numBytes > 32) {
-        hexString = hexString.slice(64);
+        numBytes = 32;
     }
 
+    var result = new Buffer(32);
+    result.fill(0);
     result.write(hexString, 32 - numBytes, numBytes, "hex");
     
     result.toString = result.toString.bind(result, "hex");

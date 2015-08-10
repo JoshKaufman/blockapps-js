@@ -6,46 +6,40 @@ function Bytes(x) {
     if (x.isFixed === undefined) {
         x.isFixed = true;
     }
-    if (this instanceof Bytes) {
-        var result;
-        if (Buffer.isBuffer(x)) {
-            result = new Buffer(x);
-        }
-        else {
-            result = hexStringToBuffer(x);
-        }
-        Object.defineProperties(result, {
-            encoding : {
-                value: encodingBytes,
-                enumerable: true
-            },
-            toString : {
-                value: toStringBytes,
-                enumerable: true
-            },
-            toJSON : {
-                value: toJSONBytes,
-                enumerable: true
-            },
-            isFixed : {
-                value : isFixed,
-                enumerable: true
-            },
-            constructor : {
-                value : Bytes,
-                enumerable: true
-            }
-        });
-        return result;
+    if (x.decode !== undefined) {
+        return decodingBytes(x);
+    }
+    
+    var result;
+    if (Buffer.isBuffer(x)) {
+        result = new Buffer(x);
     }
     else {
-        if (x.decode !== undefined) {
-            return decodingBytes(x);
-        }
-        else {
-            return new Bytes(x, isFixed);
-        }
+        result = hexStringToBuffer(x);
     }
+    Object.defineProperties(result, {
+        encoding : {
+            value: encodingBytes,
+            enumerable: true
+        },
+        toString : {
+            value: toStringBytes,
+            enumerable: true
+        },
+        toJSON : {
+            value: toJSONBytes,
+            enumerable: true
+        },
+        isFixed : {
+            value : x.isFixed,
+            enumerable: true
+        },
+        constructor : {
+            value : Bytes,
+            enumerable: true
+        }
+    });
+    return result;
 }
 
 function encodingBytes() {

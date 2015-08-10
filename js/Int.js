@@ -1,42 +1,35 @@
 module.exports = Int;
 
 function Int(x) {
-    if (x instanceof Int) {
-        var bigInt = require('big-integer');
-        var y;
-        if (typeof x === "string" && x.slice(0,2) === "0x") {
-            y = bigInt(x.slice(2),16);
-        }
-        else if (Buffer.isBuffer(x)) {
-            y = bigInt(x.toString("hex"),16);
-        }
-        else {
-            y = bigInt(x);
-        }
+    if (x.decode !== undefined) {
+        return decodingInt(x);
+    }
 
-        // Two's complement negation
-        var symRow = x.type["solidityType"];
-        if (y.geq(0) && symRow[0] != 'u') {
-            var bitSize = parseInt(symRow["bytesUsed"],16) * 8;
-            var topBitInt = asUInt.and(SolTypes.Int.exp2(bitSize - 1));
-            y = y.minus(topBitInt).minus(topBitInt);
-        }
-
-        var constr = pickConstructor(y);
-        return new constr(y);
+    var bigInt = require('big-integer');
+    var y;
+    if (typeof x === "string" && x.slice(0,2) === "0x") {
+        y = bigInt(x.slice(2),16);
+    }
+    else if (Buffer.isBuffer(x)) {
+        y = bigInt(x.toString("hex"),16);
     }
     else {
-        if (x.decode !== undefined) {
-            return decodingInt(x);
-        }
-        else {
-            return new Int(x);
+        y = bigInt(x);
+    }
+
+    // Two's complement negation
+    if (x.type !== undefined) {
+        var symRow = x.type;
+        var symType = symRow["solidityType"];
+        if (y.geq(0) && symType[0] != 'u') {
+            var bitSize = parseInt(symRow["bytesUsed"],16) * 8;
+            var topBitInt = y.and(bigInt(1).shiftLeft(bitSize - 1));
+            y = y.minus(topBitInt).minus(topBitInt);
         }
     }
-}
 
-function exp2(n) {
-    return Int(Int(1).shiftLeft(n));
+    var constr = pickConstructor(y);
+    return new constr(y);
 }
 
 function pickConstructor(y) {

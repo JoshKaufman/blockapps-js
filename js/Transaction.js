@@ -9,44 +9,49 @@ module.exports = Transaction;
 //   fromAccount:, toAccount:, data:, value:, gasPrice:, gasLimit:
 // }
 function Transaction(argObj) {
-    if (this instanceof Transaction) {
-        this.from = argObj.fromAccount.address;
-        this.gasPrice = argObj.gasPrice;
-        this.gasLimit = argObj.gasLimit;
-        if (argObj.toAccount.address !== null) {
-            this.to = argObj.toAccount.address;
-        }
-        this.value = argObj.value;
-        this.codeOrData = argObj.data;
+    var result = {
+        from       : argObj.fromAccount.address,
+        gasPrice   : argObj.gasPrice,
+        gasLimit   : argObj.gasLimit,
+        value      : argObj.value,
+        codeOrData : argObj.data,
 
         // These are set when sending because the nonce must be current
-        this.nonce = undefined;
-        this.r = undefined;
-        this.s = undefined;
-        this.v = undefined;
-        this.hash = undefined;
+        nonce : undefined,
+        r : undefined,
+        s : undefined,
+        v : undefined,
+        hash : undefined,
+    };
+    
+    if (argObj.toAccount.address !== null) {
+        result.to = argObj.toAccount.address;
+    }
 
-        // Don't show up in the JSON
-        this.send = sendTransaction;
-        this.contractCreated = getContractCreated;
-        this._fromAccount = argObj.fromAccount;
-    }
-    else {
-        return new Transaction(argObj);
-    }
+    // Don't show up in the JSON
+    Object.defineProperties(result, {
+        "send":{value:sendTransaction, enumerable:false},
+        "contractCreated":{value:getContractCreated, enumerable:false},
+        "_fromAccount":{value:argObj.fromAccount, enumerable:false}
+    });
+
+    return result;
 }
 
 function getContractCreated(apiURL, callback) {
-    function firstContractCreated(transactionResultResponse) {
+    function firstContractCreated(txResult) {
         if (typeof callback === "function") {
-            var addr = transactionResultResponse[0].contractsCreated.split(",")[0];
-            callback(Address(addr));
+            var firstC = txResult[0].contractsCreated.split(",")[0];
+            callback(Address(firstC));
         }
     }
 
-    HTTPQuery.queryAPI(apiURL + HTTPQuery.apiPrefix +
-                       "/transactionResult/" + this.hash,
-                       firstContractCreated);
+    HTTPQuery({
+        "serverURI":apiURL,
+        "queryPath":"/transactionResult/" + this.hash,
+        "get":{},
+        "callback":firstContractCreated
+    });
 }
 
 function setCryptData(apiURL, callback) {
@@ -79,11 +84,12 @@ function sendTransaction(apiURL, callback) {
     function pollAndCallback() {
         var poller = setInterval(pollTX.bind(this), 500);
         function pollTX () {
-            HTTPQuery.queryAPI(
-                apiURL + HTTPQuery.apiPrefix +
-                    "/transaction?hash=" + this.hash,
-                checkTXPosted.bind(this)
-            );
+            HTTPQuery({
+                "serverURI":apiURL,
+                "queryPath":"/query/transaction",
+                "get":{"hash":this.hash},
+                "callback":checkTXPosted.bind(this)
+            });
         }
         function checkTXPosted(txList) {
             if (txList.length != 0) {
@@ -96,15 +102,13 @@ function sendTransaction(apiURL, callback) {
     }
 
     function makeJSONQuery() {
-        var jsonFields = ["from","to","nonce","value","gasPrice","gasLimit",
-                          "codeOrData","r","s","v","hash"];
         this.value = this.value.toString(); // Stupid
-        var txString = JSON.stringify(this, jsonFields);
-        HTTPQuery.postAPI(apiURL + HTTPQuery.apiPrefix +
-                          "/transaction", txString,
-                          'application/json; charset=UTF-8',
-                          pollAndCallback.bind(this)
-                         );
+        HTTPQuery({
+            "serverURI":apiURL,
+            "queryPath":"/includetransaction",
+            "data":this,
+            "callback":pollAndCallback.bind(this)
+        });
     }
 
     setCryptData.bind(this)(apiURL, makeJSONQuery.bind(this));

@@ -49,8 +49,7 @@ function submitSolidity(argObj, callback) {
 }
 
 function compileSolidity(apiURL, callback) {
-    function getSolc(responseText) {
-        var solcResult = JSON.parse(responseText);
+    function getSolc(solcResult) {
         if (solcResult["contracts"].length != 1) {
             console.log("Code must define one and only one contract");
             return;
@@ -64,7 +63,10 @@ function compileSolidity(apiURL, callback) {
         }
     }
 
-    HTTPQuery.postAPI(apiURL + HTTPQuery.apiPrefix +
-                      "/solc", "src=" + encodeURIComponent(this.code),
-                      "application/x-www-form-urlencoded", getSolc.bind(this));
+    HTTPQuery({
+        "serverURI":apiURL,
+        "queryPath":"/solc",
+        "post":{"src":this.code},
+        "callback":getSolc.bind(this)
+    });
 }
