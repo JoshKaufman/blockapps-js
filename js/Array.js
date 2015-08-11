@@ -3,48 +3,23 @@ var typeify = require("./typeify.js");
 
 module.exports = SolArray;
 
-function SolArray(jsArr) {
+function SolArray(x) {
     if (x.isFixed === undefined) {
         x.isFixed = true;
     }
-    if (this instanceof SolArray) {
-        this.isFixed = isFixed;
-        for (var i = 0; i < jsArr.length; ++i) {
-            this.push(jsArr[i]);
-        }
+    if (x.decode !== undefined) {
+        return decodingArray(x);
     }
-    else {
-        if (x.decode !== undefined) {
-            return decodingArray(x);
-        }
-        else {
-            return new SolArray(jsArr, isFixed);
-        }
-    }
+
+    x.toString = function() {
+        return "[" + Array.prototype.toString.call(this) + "]";
+    };
+    x.toJSON = function () { return this.toString(); };
+    x.encoding = encodingArray;
+    x.constructor = SolArray;
+    return x;
 }
-
-SolArray.prototype = Object.create(
-    Array.prototype,
-    {
-        toString : {
-            enumerable : true,
-            value : function() {
-                return "[" + Array.prototype.toString.call(this) + "]";
-            }
-        },
-        toJSON : {
-            enumerable : true,
-            value : function () { return this.toString(); }
-        },
-        encoding : {
-            enumerable : true,
-            value : encodingArray
-        },
-    }
-);
-SolArray.prototype.constructor = SolArray;
-Object.defineProperties(SolArray.prototype, {constructor : {enumerable:false}});
-
+                        
 function encodingArray() {
     var totalHeadLength = 0;
     var head = [];

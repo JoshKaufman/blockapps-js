@@ -57,7 +57,7 @@ function setStorageKeyVals(apiURL, f) {
     
     HTTPQuery({
         "serverURI":apiURL,
-        "queryPath":"/query/storage",
+        "queryPath":"/storage",
         "get":{"address":this._address},
         "callback":setKeyvals.bind(this)
     });

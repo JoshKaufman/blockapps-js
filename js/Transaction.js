@@ -86,7 +86,7 @@ function sendTransaction(apiURL, callback) {
         function pollTX () {
             HTTPQuery({
                 "serverURI":apiURL,
-                "queryPath":"/query/transaction",
+                "queryPath":"/transaction",
                 "get":{"hash":this.hash},
                 "callback":checkTXPosted.bind(this)
             });
@@ -105,7 +105,7 @@ function sendTransaction(apiURL, callback) {
         this.value = this.value.toString(); // Stupid
         HTTPQuery({
             "serverURI":apiURL,
-            "queryPath":"/includetransaction",
+            "queryPath":"/transaction",
             "data":this,
             "callback":pollAndCallback.bind(this)
         });

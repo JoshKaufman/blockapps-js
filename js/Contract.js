@@ -3,6 +3,7 @@ var Storage = require("./Storage.js");
 var Transaction = require("./Transaction.js");
 var HTTPQuery = require("./HTTPQuery.js");
 var EthWord = require("./EthWord.js");
+var typeify = require("./typeify.js")
 
 var privateToAddress = require('ethereumjs-util').privateToAddress;
 var sha3 = require("./Crypto.js").sha3;
@@ -97,7 +98,7 @@ function syncAccount(apiURL, f) {
 
     HTTPQuery({
         "serverURI":apiURL,
-        "queryPath":"/query/account",
+        "queryPath":"/account",
         "get":{"address":this.address},
         "callback":setBalanceAndNonce.bind(this)
     });
@@ -106,7 +107,7 @@ function syncAccount(apiURL, f) {
 function setFuncs(symtab) {
     for (var sym in symtab) {
         var symRow = symtab[sym];
-        if (symRow["functionHash"] !== undefined) { // Only functions
+        if (symRow["jsType"] === "Function") {
             this.call[sym] = SolTypes.Function(this, symRow);
         }
     }
@@ -215,8 +216,11 @@ function handleDynamicArray(symRow, symtab) {
 function handleMapping(symRow, symtab) {
     var result = SolTypes.Mapping(
         (function (x) {
+            var keyRow = symRow["mappingKey"];
+            x.type = keyRow;
+            var y = typeify(x);
             var canonKeyAt = EthWord(symRow["atStorageKey"]);
-            var key = sha3(x.encoding() + canonKeyAt.toString());
+            var key = sha3(y.encoding() + canonKeyAt.toString());
             var eltRow = {};
             Object.getOwnPropertyNames(symRow["mappingValue"]).forEach(
                 function(name) {
@@ -269,6 +273,7 @@ function handleSimpleType(symRow) {
 
 function handleStruct(baseKey, structFields, symtab) {
     var result = {};
+    console.log(structFields);
     for (var field in structFields) {
         var fieldRow = {};
         Object.getOwnPropertyNames(structFields[field]).forEach(

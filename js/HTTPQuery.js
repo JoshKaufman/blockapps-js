@@ -10,11 +10,10 @@ module.exports = HTTPQuery;
 // }
 
 function HTTPQuery(blockappsQueryObj) {
-    var apiPrefix = "" //"/eth/v1.0"
+    var apiPrefix = "/eth/v1.0"
     
     var options = {
-        "baseUrl":blockappsQueryObj.serverURI + apiPrefix,
-        "uri":blockappsQueryObj.queryPath,
+        "uri":blockappsQueryObj.serverURI + apiPrefix + blockappsQueryObj.queryPath,
         "json":true
     };
     if (blockappsQueryObj["get"]) {
@@ -40,6 +39,5 @@ function HTTPQuery(blockappsQueryObj) {
             console.log(error);
         }
     }
-
     request(options, httpCallback);
 }
