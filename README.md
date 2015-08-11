@@ -1,6 +1,6 @@
-# blockapps-api
+# blockapps-js
 
-blockapps-api is a library that exposes a number of functions for
+blockapps-js is a library that exposes a number of functions for
 interacting with the Blockchain via the BlockApps API.  Currently it
 has strong support for compiling Solidity code, creating the resulting
 contract, and querying its variables or calling its functions through
@@ -8,7 +8,7 @@ Javascript code.
 
 ## Installation
 
-`npm install blockapps-api`
+`npm install blockapps-js`
 
 ## Documentation
 
@@ -17,10 +17,10 @@ the API for this particular module.
 
 ## API Overview
 
-All functionality is included in the `blockapps-api` module:
+All functionality is included in the `blockapps-js` module:
 
 ```js
-var blockapps = require('blockapps-api');
+var blockapps = require('blockapps-js');
 ```
 
 Many functions, in fact any that require interacting directly with the
@@ -218,13 +218,14 @@ fields.
 
 ### Internal
 
-The Internal object has three members but is not intendend to be used
+The Internal object has four members but is not intendend to be used
 normally.
 
 * `Storage`, which abstracts the Ethereum VM storage.
 * `EthWord`, which abstracts Ethereum's 256-bit words.
 * `Crypto`, which contains the `sha3` hash function used by Ethereum
 (and, eventually, others).
+* `Types`, below.
 
 ### Types
 

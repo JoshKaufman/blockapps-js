@@ -1,11 +1,11 @@
 {
-    "name":"blockapps-api",
+    "name":"blockapps-js",
     "version":"1.0.0",
     "description":"Interface to the Ethereum blockchain providing contract creation and transactions, state inspection, and dApp registration and management",
     "keywords":["ethereum","blockchain","blockapps","dapp"],
-    "homepage":"https://github.com/blockapps/js-lib",
+    "homepage":"https://github.com/blockapps/blockapps-js",
     "bugs":{
-        "url":"https://github.com/blockapps/js-lib/issues",
+        "url":"https://github.com/blockapps/blockapps-js/issues",
         "email":"ryan.reich@consensys.net"
     },
     "license":"MIT",
@@ -22,7 +22,7 @@
     "main":"api-node",
     "repository":{
         "type":"git",
-        "url":"https://github.com/blockapps/js-lib/js-lib.git"
+        "url":"https://github.com/blockapps/blockapps-js/blockapps-js.git"
     },
     "dependencies":{
         "ethereumjs-tx":"",
