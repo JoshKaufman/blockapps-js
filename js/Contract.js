@@ -30,8 +30,8 @@ function Contract(argObj) {
             this.get = getSingleVar;
             this.call = call;
             this._storage = Storage(this.address);
-
-            this.sync = syncContract.bind(this, argObj.symtab);
+            this.name = Object.keys(argObj.symtab)[0];
+            this.sync = syncContract.bind(this, argObj.symtab[this.name]);
             setVars.bind(this)(argObj.symtab);
             setFuncs.bind(this)(argObj.symtab);
         }
@@ -99,7 +99,7 @@ function syncAccount(apiURL, f) {
     HTTPQuery({
         "serverURI":apiURL,
         "queryPath":"/account",
-        "get":{"address":this.address},
+        "get":{"address":this.address.toString()},
         "callback":setBalanceAndNonce.bind(this)
     });
 }

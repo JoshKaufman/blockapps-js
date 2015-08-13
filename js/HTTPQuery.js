@@ -39,5 +39,6 @@ function HTTPQuery(blockappsQueryObj) {
             console.log(error);
         }
     }
+
     request(options, httpCallback);
 }

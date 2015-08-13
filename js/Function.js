@@ -11,9 +11,12 @@ function Function(toContract, api) { // NOT the solc API
     var apiReturns = api["functionReturns"];
 
     function getResultAndCallback(apiURL, callback, tx) {
-        HTTPQuery.queryAPI(apiURL + HTTPQuery.apiPrefix +
-                           "/transactionResult/" + tx.hash,
-                           useRetVal.bind(this, callback));
+        HTTPQuery({
+            "serverURI": apiURL,
+            "queryPath": "/transactionResult/" + tx.hash,
+            "callback" : useRetVal.bind(this, callback),
+            "get"      : {}
+        });
     }
 
     function useRetVal(callback, txResultJSON) {

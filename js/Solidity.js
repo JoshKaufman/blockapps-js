@@ -54,8 +54,7 @@ function compileSolidity(apiURL, callback) {
             console.log("Code must define one and only one contract");
             return;
         }
-        var name = solcResult["contracts"][0]["name"];
-        this.symtab = solcResult["xabis"][name];
+        this.symtab = solcResult["xabis"];
         //this.abi = solcResult["abis"][0]["abi"];
         this.vmCode = solcResult["contracts"][0]["bin"];
         if (typeof callback === "function") {

@@ -10,11 +10,11 @@ module.exports = Transaction;
 // }
 function Transaction(argObj) {
     var result = {
-        from       : argObj.fromAccount.address,
-        gasPrice   : argObj.gasPrice,
-        gasLimit   : argObj.gasLimit,
-        value      : argObj.value,
-        codeOrData : argObj.data,
+        from       : argObj.fromAccount.address.toString(),
+        gasPrice   : argObj.gasPrice.valueOf(),
+        gasLimit   : argObj.gasLimit.valueOf(),
+        value      : argObj.value.toString(),
+        codeOrData : argObj.data.toString(),
 
         // These are set when sending because the nonce must be current
         nonce : undefined,
@@ -41,6 +41,7 @@ function Transaction(argObj) {
 function getContractCreated(apiURL, callback) {
     function firstContractCreated(txResult) {
         if (typeof callback === "function") {
+            console.log(txResult);
             var firstC = txResult[0].contractsCreated.split(",")[0];
             callback(Address(firstC));
         }
@@ -66,7 +67,7 @@ function setCryptData(apiURL, callback) {
     }
 
     function copyCryptData () {
-        this.nonce = this._fromAccount.nonce;
+        this.nonce = this._fromAccount.nonce.valueOf();
         tx.nonce = this.nonce.valueOf();
         tx.sign(this._fromAccount.privateKey);
         this.r = (tx.r).toString('hex');
