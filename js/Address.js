@@ -1,49 +1,42 @@
 module.exports = Address;
 
-function Address(x) {
-    if (this instanceof Address) {
-        var result = new Buffer(20);
-        if (typeof x === "string") {
-            hexStringToBuffer.call(result, x);
-        }
-        else if (typeof x === "number") {
-            hexStringToBuffer.call(result, x.toString(16));
-        }
-        else if (Buffer.isBuffer(x)) {
-            x.copy(result, 20 - x.length);
-        }
-        Object.defineProperties(result, {
-            encoding: {
-                value : encodingAddress,
-                enumerable : true
-            },
-            toString: {
-                value : toStringAddress,
-                enumerable: true
-            },
-            toJSON  : {
-                value : toStringAddress,
-                enumerable : true
-            },
-            isFixed : {
-                value : true,
-                enumerable : true
-            },
-            constructor : {
-                value : Buffer,
-                enumerable : true
-            }
-        });
-        return result;
+function Address(x, decode) {
+    if (decode !== undefined) {
+        return decodingAddress(x);
     }
-    else {
-        if (x.decode !== undefined) {
-            return decodingAddress(x);
-        }
-        else {
-            return new Address(x);
-        }
+    var result = new Buffer(20);
+    if (typeof x === "string") {
+        hexStringToBuffer.call(result, x);
     }
+    else if (typeof x === "number") {
+        hexStringToBuffer.call(result, x.toString(16));
+    }
+    else if (Buffer.isBuffer(x)) {
+        x.copy(result, 20 - x.length);
+    }
+    Object.defineProperties(result, {
+        encoding: {
+            value : encodingAddress,
+            enumerable : true
+        },
+        toString: {
+            value : toStringAddress,
+            enumerable: true
+        },
+        toJSON  : {
+            value : toStringAddress,
+            enumerable : true
+        },
+        isFixed : {
+            value : true,
+            enumerable : true
+        },
+        constructor : {
+            value : Buffer,
+            enumerable : true
+        }
+    });
+    return result;
 }
 
 function toStringAddress() {
@@ -59,7 +52,7 @@ function encodingAddress() {
 }
 
 function decodingAddress(x) {
-    var result = new Address(x.slice(0,64));
+    var result = Address(x.slice(0,64));
     Object.defineProperties(result, {
         decodeTail : {
             value : x.slice(64),

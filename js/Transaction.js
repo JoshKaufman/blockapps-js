@@ -87,8 +87,8 @@ function sendTransaction(apiURL, callback) {
         function pollTX () {
             HTTPQuery({
                 "serverURI":apiURL,
-                "queryPath":"/transaction",
-                "get":{"hash":this.hash},
+                "queryPath":"/transactionResult/" + this.hash,
+                "get":{},
                 "callback":checkTXPosted.bind(this)
             });
         }

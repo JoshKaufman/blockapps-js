@@ -1,7 +1,7 @@
 module.exports = Bool;
 
-function Bool(x) {
-    if (x.decode !== undefined) {
+function Bool(x, decode) {
+    if (decode !== undefined) {
         return decodingBool(x);
     }
     var result = Boolean(x);
@@ -21,7 +21,7 @@ function encodingBool() {
 }
 
 function decodingBool(x) {
-    var result = new Bool(x.slice(0,64)[-1] === '1');
+    var result = Bool(x.slice(0,64)[-1] === '1');
     Object.defineProperties(result, {
         decodeTail : {
             value : x.slice(64),

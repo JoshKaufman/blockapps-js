@@ -1,14 +1,17 @@
 module.exports = Int;
 
-function Int(x) {
-    if (x.decode !== undefined) {
+function Int(x, decode) {
+    if (decode !== undefined) {
         return decodingInt(x);
     }
 
     var bigInt = require('big-integer');
     var y;
-    if (typeof x === "string" && x.slice(0,2) === "0x") {
-        y = bigInt(x.slice(2),16);
+    if (typeof x === "string") {
+        if (x.slice(0,2) === "0x") {
+            x = x.slice(2);
+        }
+        y = bigInt(x,16);
     }
     else if (Buffer.isBuffer(x)) {
         y = bigInt(x.toString("hex"),16);
@@ -114,7 +117,7 @@ function encodingInt() {
 }
 
 function decodingInt(x) {
-    var result = new Int(x.slice(0,64));
+    var result = Int(x.slice(0,64));
     Object.defineProperties(result, {
         decodeTail : {
             value : x.slice(64),

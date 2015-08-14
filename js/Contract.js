@@ -31,9 +31,11 @@ function Contract(argObj) {
             this.call = call;
             this._storage = Storage(this.address);
             this.name = Object.keys(argObj.symtab)[0];
-            this.sync = syncContract.bind(this, argObj.symtab[this.name]);
-            setVars.bind(this)(argObj.symtab);
-            setFuncs.bind(this)(argObj.symtab);
+
+            var symtab = argObj.symtab[this.name]
+            this.sync = syncContract.bind(this, symtab);
+            setVars.bind(this)(symtab);
+            setFuncs.bind(this)(symtab);
         }
     }
     else {
@@ -145,7 +147,7 @@ function handleVar(symRow, symtab) {
     }
     if (typeof typeSymTab["structFields"] !== "undefined") {
         var structFields = typeSymTab["structFields"];
-        return handleStruct.bind(this)(EthWord(symRow["atStorageKey"]), structFields, symtab);
+        return handleStruct.bind(this)(SolTypes.Int(symRow["atStorageKey"]), structFields, symtab);
     }
 }
 
@@ -214,24 +216,23 @@ function handleDynamicArray(symRow, symtab) {
 }
 
 function handleMapping(symRow, symtab) {
+    var keyRow = symRow["mappingKey"];
+    var canonKeyAt = EthWord(symRow["atStorageKey"]);
+    var valueRow = symRow["mappingValue"];
+    var solType = symRow["solidityType"];
     var result = SolTypes.Mapping(
         (function (x) {
-            var keyRow = symRow["mappingKey"];
-            x.type = keyRow;
-            var y = typeify(x);
-            var canonKeyAt = EthWord(symRow["atStorageKey"]);
+            var y = typeify(x, keyRow);
             var key = sha3(y.encoding() + canonKeyAt.toString());
             var eltRow = {};
-            Object.getOwnPropertyNames(symRow["mappingValue"]).forEach(
+            Object.getOwnPropertyNames(valueRow).forEach(
                 function(name) {
-                    eltRow[name] = symRow["mappingValue"][name];
+                    eltRow[name] = valueRow[name];
                 }
             );
             eltRow["atStorageKey"] = key;
             return handleVar.bind(this)(eltRow, symtab);
-        }).bind(this),
-        symRow["solidityType"]
-    );
+        }).bind(this), solType);
     return result;
 }
 
@@ -281,9 +282,9 @@ function handleStruct(baseKey, structFields, symtab) {
                 fieldRow[name] = structFields[field][name];
             }
         );
-        var fieldKey = EthWord(fieldRow["atStorageKey"]);
-        var realKey = baseKey.plus(fieldKey);
-        fieldRow["atStorageKey"] = realKey.toString();
+        var fieldKey = SolTypes.Int(fieldRow["atStorageKey"]);
+        var realKey = SolTypes.Int(baseKey.plus(fieldKey));
+        fieldRow["atStorageKey"] = realKey.encoding(); // Sort of a hack
         if (fieldRow["arrayNewKeyEach"] !== undefined &&
             fieldRow["arrayLength"] === undefined) { // Dyn. array, bytes, or string
                 fieldRow["arrayDataStart"] =

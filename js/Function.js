@@ -22,18 +22,8 @@ function Function(toContract, api) { // NOT the solc API
     function useRetVal(callback, txResultJSON) {
         var txResult = JSON.parse(txResultJSON);
         var retVal = txResult.response;
-        Object.defineProperties(retVal, {
-            decode : {
-                value: true,
-                enumerable : false
-            },
-            type : {
-                value : apiReturns,
-                enumerable : false
-            }
-        });
         if (typeof callback === "function") {
-            callback(typeify(retVal));
+            callback(typeify(retVal, apiReturns, true));
         }
     }
 
@@ -45,17 +35,10 @@ function Function(toContract, api) { // NOT the solc API
         var args = []
         apiArgs.forEach(function(arg, i) {
             var tmp = fArgObj[arg];
-            Object.defineProperties(tmp, {
-                type : {
-                    value : apiDomain[i],
-                    enumerable : false
-                }
-            });
-            args.push(typeify(tmp));
+            args.push(typeify(tmp, apiDomain[i]));
         });
         argObj.toAccount = toContract;
         argObj.data = api.functionHash + SolArray(args).encoding();
-
         Transaction(argObj).send(
             apiURL, getResultAndCallback.bind(this, apiURL, callback));
     }

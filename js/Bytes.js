@@ -2,12 +2,12 @@ var Int = require("./Int.js")
 
 module.exports = Bytes;
 
-function Bytes(x) {
+function Bytes(x, type, decode) {
     if (x.isFixed === undefined) {
         x.isFixed = true;
     }
-    if (x.decode !== undefined) {
-        return decodingBytes(x);
+    if (decode !== undefined) {
+        return decodingBytes(x, type);
     }
     
     var result;
@@ -56,10 +56,10 @@ function encodingBytes() {
     return result;
 }
 
-function decodingBytes(x) {
+function decodingBytes(x, type) {
     var length;
     if (x.isFixed) {
-        length = x.type["bytesUsed"];
+        length = type["bytesUsed"];
     }
     else {
         var tmp = Int(x);
@@ -68,7 +68,7 @@ function decodingBytes(x) {
     }
     var roundLength = 2*Math.floor(length + 32); // Rounded up, in nibbles
     
-    var result = new Bytes(x.slice(0,roundLength));
+    var result = Bytes(x.slice(0,roundLength));
     result = result.slice(0,length);
     Object.defineProperties(result, {
         decodeTail : {

@@ -3,12 +3,12 @@ var typeify = require("./typeify.js");
 
 module.exports = SolArray;
 
-function SolArray(x) {
+function SolArray(x, type, decode) {
     if (x.isFixed === undefined) {
         x.isFixed = true;
     }
-    if (x.decode !== undefined) {
-        return decodingArray(x);
+    if (decode !== undefined) {
+        return decodingArray(x, type);
     }
 
     x.toString = function() {
@@ -60,10 +60,10 @@ function encodingArray() {
 
 // Only does homogeneous arrays
 function decodingArray(x) {
-    var eltRow = x.decode["arrayElement"];
+    var eltRow = type["arrayElement"];
     var length;
     if (x.isFixed) {
-        length = x.decode["arrayLength"];
+        length = type["arrayLength"];
     }
     else {
         var tmp = Int(x);
@@ -73,9 +73,7 @@ function decodingArray(x) {
 
     var result = [];
     while (result.length < length) {
-        x.decode = true;
-        x.type = eltRow;
-        var tmp = typeify(x);
+        var tmp = typeify(x, eltRow, true);
         x = tmp.decodeTail;
         result.push(tmp);
     }
@@ -86,5 +84,5 @@ function decodingArray(x) {
             enumerable : false
         }
     });
-    return new Array(result);
+    return Array(result);
 }

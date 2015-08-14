@@ -40,5 +40,6 @@ function HTTPQuery(blockappsQueryObj) {
         }
     }
 
+    console.log(options);
     request(options, httpCallback);
 }

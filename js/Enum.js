@@ -13,24 +13,17 @@ function Enum (nameMap) {
     });
     Object.seal(enumType);
 
-    function EnumItem (x) {
-        if (this instanceof EnumItem) {
-            if (typeof x === "string" ) {
-                x = parseInt(x,16);
-            }
-            var item = enumType.get(x);
-            var nodeEnumItem = Object.getPrototypeOf(item).constructor;
-            nodeEnumItem.call(this, item.key, item.value);
-            Object.defineProperties(this, {_options : {enumerable : false}});
+    function EnumItem (x, decode) {
+        if (decode !== undefined) {
+            return decodingEnum(x);
         }
-        else {
-            if (x.decode !== undefined) {
-                return decodingEnum(x);
-            }
-            else {
-                return new EnumItem(x);
-            }
+        if (typeof x === "string" ) {
+            x = parseInt(x,16);
         }
+        var item = enumType.get(x);
+        var nodeEnumItem = Object.getPrototypeOf(item).constructor;
+        nodeEnumItem.call(this, item.key, item.value);
+        Object.defineProperties(this, {_options : {enumerable : false}});
     }
     EnumItem.prototype = Object.create(
         Object.getPrototypeOf(enumType.enums[0]),

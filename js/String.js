@@ -3,7 +3,7 @@ var nodeString = require('string')
 
 module.exports = SolString
 
-function SolString(jsString) {
+function SolString(jsString, decode) {
     if (this instanceof SolString) {
         // What is this?  I don't know what I was thinking here.
         this.setValue(jsString);
