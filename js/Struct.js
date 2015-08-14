@@ -7,7 +7,7 @@ function Struct(x) {
     }
     Object.defineProperties(result, {
         toString : {
-            value : function() {return JSON.stringify(this);},
+            value : function() {return JSON.stringify(this, undefined, "  ");},
             enumerable : false
         },
         isFixed : {

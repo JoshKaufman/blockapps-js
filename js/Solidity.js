@@ -24,19 +24,8 @@ function Solidity(code) {
 //   apiURL:, fromAccount:, value:, gasPrice:, gasLimit:
 // }
 function compileAndSubmit(argObj, callback) {
-    function contractCallback(address) {
-        var contract = Contract({
-            address: address,
- //           abi: this.abi,
-            symtab: this.symtab,
-        });
-        callback(contract);
-    }
-    function submitCallback(transaction) {
-        transaction.contractCreated(argObj.apiURL, contractCallback.bind(this));
-    }
     function compileCallback(solidity) { 
-        submitSolidity.bind(this) (argObj, submitCallback.bind(this));
+        submitSolidity.bind(this) (argObj, callback);
     }
     compileSolidity.bind(this)(argObj.apiURL, compileCallback.bind(this));
 }
@@ -45,7 +34,16 @@ function submitSolidity(argObj, callback) {
     argObj.toAccount = Contract();
     argObj.data = this.vmCode;
     var submitTX = Transaction(argObj);
-    submitTX.send(argObj.apiURL, callback);
+    submitTX.send(argObj.apiURL, contractCallback.bind(this));
+
+    function contractCallback(txResult) {
+        var contract = Contract({
+            address: txResult.contractsCreated[0], // Only handle one-contract code
+ //           abi: this.abi,
+            symtab: this.symtab,
+        });
+        callback(contract);
+    }
 }
 
 function compileSolidity(apiURL, callback) {

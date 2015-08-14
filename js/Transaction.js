@@ -31,28 +31,10 @@ function Transaction(argObj) {
     // Don't show up in the JSON
     Object.defineProperties(result, {
         "send":{value:sendTransaction, enumerable:false},
-        "contractCreated":{value:getContractCreated, enumerable:false},
         "_fromAccount":{value:argObj.fromAccount, enumerable:false}
     });
 
     return result;
-}
-
-function getContractCreated(apiURL, callback) {
-    function firstContractCreated(txResult) {
-        if (typeof callback === "function") {
-            console.log(txResult);
-            var firstC = txResult[0].contractsCreated.split(",")[0];
-            callback(Address(firstC));
-        }
-    }
-
-    HTTPQuery({
-        "serverURI":apiURL,
-        "queryPath":"/transactionResult/" + this.hash,
-        "get":{},
-        "callback":firstContractCreated
-    });
 }
 
 function setCryptData(apiURL, callback) {
@@ -93,10 +75,15 @@ function sendTransaction(apiURL, callback) {
             });
         }
         function checkTXPosted(txList) {
+            console.log(txList)
             if (txList.length != 0) {
                 clearInterval(poller);
                 if (typeof callback === "function") {
-                    callback(this);
+                    txResult = txList[0];
+                    var contractsCreated = txResult.contractsCreated.split(",");
+                    txResult.contractsCreated = contractsCreated;
+                    console.log(txResult);
+                    callback(txResult);
                 }
             }
         }

@@ -1,4 +1,3 @@
-var HTTPQuery = require("./HTTPQuery.js")
 var SolArray = require("./Array.js")
 var Transaction = require("./Transaction.js")
 var typeify = require("./typeify.js");
@@ -10,17 +9,7 @@ function Function(toContract, api) { // NOT the solc API
     var apiArgs = api["functionArgs"];
     var apiReturns = api["functionReturns"];
 
-    function getResultAndCallback(apiURL, callback, tx) {
-        HTTPQuery({
-            "serverURI": apiURL,
-            "queryPath": "/transactionResult/" + tx.hash,
-            "callback" : useRetVal.bind(this, callback),
-            "get"      : {}
-        });
-    }
-
-    function useRetVal(callback, txResultJSON) {
-        var txResult = JSON.parse(txResultJSON);
+    function useRetVal(callback, txResult) {
         var retVal = txResult.response;
         if (typeof callback === "function") {
             callback(typeify(retVal, apiReturns, true));
@@ -40,7 +29,7 @@ function Function(toContract, api) { // NOT the solc API
         argObj.toAccount = toContract;
         argObj.data = api.functionHash + SolArray(args).encoding();
         Transaction(argObj).send(
-            apiURL, getResultAndCallback.bind(this, apiURL, callback));
+            apiURL, useRetval.bind(this, callback));
     }
     f.toString = function() { return api["solidityType"]; };
     f.encoding = function() { return argObj.functionHash; };
