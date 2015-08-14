@@ -66,6 +66,10 @@ function setCryptData(apiURL, callback) {
 function sendTransaction(apiURL, callback) {
     function pollAndCallback() {
         var poller = setInterval(pollTX.bind(this), 500);
+        var timeout = setTimeout(function() {
+            clearInterval(poller);
+            console.log("sendTransaction timed out");
+        }, 10000);
         function pollTX () {
             HTTPQuery({
                 "serverURI":apiURL,
@@ -77,6 +81,7 @@ function sendTransaction(apiURL, callback) {
         function checkTXPosted(txList) {
             console.log(txList)
             if (txList.length != 0) {
+                clearTimeout(timeout);
                 clearInterval(poller);
                 if (typeof callback === "function") {
                     txResult = txList[0];
