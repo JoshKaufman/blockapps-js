@@ -12,6 +12,9 @@ var Struct = require("./Struct");
 module.exports = typeify;
 
 function typeify(jsVal, typeSymRow, decode) {
+    if (typeSymRow === undefined) {
+        return undefined;
+    }
     switch (typeSymRow["jsType"]) {
     // Simple types
     case "Address" : return Address(jsVal, decode);

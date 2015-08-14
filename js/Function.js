@@ -29,7 +29,7 @@ function Function(toContract, api) { // NOT the solc API
         argObj.toAccount = toContract;
         argObj.data = api.functionHash + SolArray(args).encoding();
         Transaction(argObj).send(
-            apiURL, useRetval.bind(this, callback));
+            apiURL, useRetVal.bind(this, callback));
     }
     f.toString = function() { return api["solidityType"]; };
     f.encoding = function() { return argObj.functionHash; };
