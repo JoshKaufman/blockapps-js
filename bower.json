@@ -1,0 +1,20 @@
+{
+  "name": "blockapps-js",
+  "version": "0.0.0",
+  "homepage": "https://github.com/JoshKaufman/blockapps-js",
+  "authors": [
+    "JoshKaufman <me@awesomejosh.com>"
+  ],
+  "scripts": {
+     "postinstall": "npm install && ./mkbrowser.sh"
+  },
+  "main": "api.js",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
