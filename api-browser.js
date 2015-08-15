@@ -1,0 +1,1 @@
+global.blockapi = require('./api-node.js');
