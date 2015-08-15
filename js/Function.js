@@ -21,6 +21,7 @@ function Function(toContract, api) { // NOT the solc API
     // }
  
     function f(apiURL, callback, argObj, fArgObj) {
+        console.log("fArgObj");console.log(fArgObj)
         var args = []
         apiArgs.forEach(function(arg, i) {
             var tmp = fArgObj[arg];

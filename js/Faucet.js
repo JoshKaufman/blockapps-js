@@ -13,6 +13,10 @@ function claimEther(faucetObj) {
     // This is from Transaction.js.  Make a module for it!
     function pollAndCallback() {
         var poller = setInterval(pollTX.bind(this), 500);
+        var timeout = setTimeout(function() {
+            clearInterval(poller);
+            console.log("sendTransaction timed out");
+        }, 10000);
         function pollTX () {
             HTTPQuery({
                 "serverURI":faucetObj.apiURL,
@@ -27,6 +31,7 @@ function claimEther(faucetObj) {
             console.log(acctList)
             // Only polls for the creation of a new account.
             if (acctList.length != 0) {
+                clearTimeout(timeout);
                 clearInterval(poller);
                 if (typeof faucetObj.callback === "function") {
                     faucetObj.callback();

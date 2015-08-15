@@ -11,6 +11,7 @@ function Bytes(x, type, decode) {
     }
     
     var result;
+    console.log("Bytes x:"); console.log(x);
     if (Buffer.isBuffer(x)) {
         result = new Buffer(x);
     }
@@ -58,7 +59,7 @@ function encodingBytes() {
 
 function decodingBytes(x, type) {
     var length;
-    if (x.isFixed) {
+    if (type["arrayDataStart"] === undefined) {
         length = type["bytesUsed"];
     }
     else {
@@ -67,8 +68,10 @@ function decodingBytes(x, type) {
         x = tmp.decodeTail;
     }
     var roundLength = 2*Math.floor(length + 32); // Rounded up, in nibbles
-    
+
+    console.log("x: "); console.log(x);
     var result = Bytes(x.slice(0,roundLength));
+    console.log("result: "); console.log(result);
     result = result.slice(0,length);
     Object.defineProperties(result, {
         decodeTail : {
