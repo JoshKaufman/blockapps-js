@@ -203,15 +203,20 @@ function handleDynamicArray(symRow, symtab) {
         return result;
     }
     else {
-        var numSlots = SolTypes.Int(length).over(32);
-        var rawData = this._storage.chunk(realKey,numSlots);
-        if (symRow["solidityType"] == "bytes") {
-            return SolTypes.Bytes(rawData, false);
-        }
-        if (symRow["solidityType"] == "string") {
+        length = SolTypes.Int(length).valueOf();
+        var numSlots = (length + 31)/32; // Round up
+        var rawData = this._storage.chunk(realKey,numSlots).slice(0,length);
+        switch (symRow["solidityType"]) {
+        case "bytes":
+            var result = SolTypes.Bytes(rawData);
+            result.isFixed = false;
+            return result;
+        case "string":
+            console.log("Real key:");console.log(realKey);
+            console.log("String data:");console.log(rawData.toString('utf8'));
             return SolTypes.String(rawData.toString('utf8'));
+        default: break;
         }
-        return null; // I think that's it
     }
 }
 
@@ -287,8 +292,7 @@ function handleStruct(baseKey, structFields, symtab) {
         fieldRow["atStorageKey"] = realKey.encoding(); // Sort of a hack
         if (fieldRow["arrayNewKeyEach"] !== undefined &&
             fieldRow["arrayLength"] === undefined) { // Dyn. array, bytes, or string
-                fieldRow["arrayDataStart"] =
-                sha3(realKey.toString());
+                fieldRow["arrayDataStart"] = sha3(realKey.encoding());
         }
         result[field] = handleVar.bind(this)(fieldRow, symtab);
     }
