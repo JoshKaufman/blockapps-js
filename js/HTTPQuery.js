@@ -1,4 +1,4 @@
-var request = require("browser-request");
+var request = require("request");
 
 module.exports = HTTPQuery;
 
