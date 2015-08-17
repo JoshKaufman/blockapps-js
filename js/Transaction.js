@@ -9,67 +9,81 @@ module.exports = Transaction;
 //   fromAccount:, toAccount:, data:, value:, gasPrice:, gasLimit:
 // }
 function Transaction(argObj) {
-    var result = {
-        from       : argObj.fromAccount.address.toString(),
-        gasPrice   : argObj.gasPrice.valueOf(),
-        gasLimit   : argObj.gasLimit.valueOf(),
-        value      : argObj.value.toString(),
-        codeOrData : argObj.data.toString(),
+    var tx = new ethTransaction();
+    tx.gasPrice = argObj.gasPrice;
+    tx.gasLimit = argObj.gasLimit;
+    tx.value = argObj.value;
+    tx.data = argObj.data;
 
-        // These are set when sending because the nonce must be current
-        nonce : undefined,
-        r : undefined,
-        s : undefined,
-        v : undefined,
-        hash : undefined,
-    };
+    Object.defineProperty(tx, "partialHash", {
+        get : function() {
+            return bufToString(ethTransaction.prototype.hash.call(this));
+        }
+    });
     
     if (argObj.toAccount.address !== null) {
-        result.to = argObj.toAccount.address;
+        tx.to = argObj.toAccount.address;
     }
 
-    // Don't show up in the JSON
-    Object.defineProperties(result, {
-        "send":{value:sendTransaction, enumerable:false},
-        "_fromAccount":{value:argObj.fromAccount, enumerable:false}
-    });
+    var from = argObj.fromAccount;
+    function sign(apiURL, callback) {
+        function doSign () {
+            this.nonce = from.nonce.valueOf();
+            ethTransaction.prototype.sign.call(this, from.privateKey);
+            callback();
+        }
 
+        from.sync(apiURL, doSign.bind(this));
+    }
+    tx.sign = sign;
+    tx.send = sendTransaction;
+    tx.toJSON = txToJSON;
+    return tx;
+}
+
+function txToJSON() {
+    var result = {
+        "nonce"      : bufToNum(checkZero(this.nonce)),
+        "gasPrice"   : bufToNum(checkZero(this.gasPrice)),
+        "gasLimit"   : bufToNum(checkZero(this.gasLimit)),
+        "value"      : bufToNum(checkZero(this.value)).toString(10),
+        "codeOrData" : bufToString(this.data),
+        "from"       : bufToString(this.from),
+        "to"         : bufToString(this.to),
+        "r"          : bufToString(this.r),
+        "s"          : bufToString(this.s),
+        "v"          : bufToString(this.v),
+        "hash"       : this.partialHash
+    }
+    if (result["to"].length === 0) {
+        delete result["to"];
+    }
     return result;
 }
 
-function setCryptData(apiURL, callback) {
-    var tx = new ethTransaction();
+function bufToNum(buf) {
+    return parseInt(bufToString(buf),16);
+}
 
-    tx.gasPrice = this.gasPrice;
-    tx.gasLimit = this.gasLimit;
-    tx.value = this.value;
-    tx.data = this.codeOrData;
-    if (typeof this.to !== "undefined") {
-        tx.to = this.to.valueOf();
-    }
+function bufToString(buf) {
+    return buf.toString("hex");
+}
 
-    function copyCryptData () {
-        this.nonce = this._fromAccount.nonce.valueOf();
-        tx.nonce = this.nonce.valueOf();
-        tx.sign(this._fromAccount.privateKey);
-        this.r = (tx.r).toString('hex');
-        this.s = (tx.s).toString('hex');
-        this.v = (tx.v).toString('hex');
-        this.hash = tx.hash().toString('hex');
-
-        callback();
-    }
-
-    this._fromAccount.sync(apiURL, copyCryptData.bind(this));
+function checkZero(buf) {
+    return (buf.length === 0) ? new Buffer([0]) : buf;
 }
 
 function sendTransaction(apiURL, callback) {
     function pollAndCallback() {
         var poller = setInterval(pollTX.bind(this), 500);
+        var timeout = setTimeout(function() {
+            clearInterval(poller);
+            console.log("sendTransaction timed out");
+        }, 10000);
         function pollTX () {
             HTTPQuery({
                 "serverURI":apiURL,
-                "queryPath":"/transactionResult/" + this.hash,
+                "queryPath":"/transactionResult/" + this.partialHash,
                 "get":{},
                 "callback":checkTXPosted.bind(this)
             });
@@ -77,6 +91,7 @@ function sendTransaction(apiURL, callback) {
         function checkTXPosted(txList) {
             console.log(txList)
             if (txList.length != 0) {
+                clearTimeout(timeout);
                 clearInterval(poller);
                 if (typeof callback === "function") {
                     txResult = txList[0];
@@ -89,8 +104,8 @@ function sendTransaction(apiURL, callback) {
         }
     }
 
-    function makeJSONQuery() {
-        this.value = this.value.toString(); // Stupid
+    function sendTX() {
+        console.log("TX json:" + JSON.stringify(this));
         HTTPQuery({
             "serverURI":apiURL,
             "queryPath":"/transaction",
@@ -99,5 +114,5 @@ function sendTransaction(apiURL, callback) {
         });
     }
 
-    setCryptData.bind(this)(apiURL, makeJSONQuery.bind(this));
+    this.sign(apiURL, sendTX.bind(this));
 }

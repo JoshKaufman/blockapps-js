@@ -19,13 +19,11 @@ function typeify(jsVal, typeSymRow, decode) {
     // Simple types
     case "Address" : return Address(jsVal, decode);
     case "Bool"    : return Bool(jsVal, decode);
-    case "String"  : return String(jsVal, decode);
+    case "String"  : return String(jsVal, typeSymRow, decode);
     case "Enum"    : return Enum(typeSymRow["enumNames"])(jsVal, decode);
     case "Int"     : return Int(jsVal, decode);
     // Compound types
-    case "Bytes" :
-        jsVal.isFixed = (typeSymRow["arrayLength"] !== undefined);
-        return Bytes(jsVal, typeSymRow, decode);
+    case "Bytes"   : return Bytes(jsVal, typeSymRow, decode);
     case "Array" :
         if (decode) {
             return Array(jsVal, typeSymRow, true);

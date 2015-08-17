@@ -5,30 +5,30 @@ var HTTPQuery = require("./HTTPQuery.js");
 module.exports = Storage;
 
 function Storage(address) {
-    if (this instanceof Storage) {
-        this._keyvals = {};
-        this._address = address;
-        this.sync = setStorageKeyVals;
-        this.atKey = getStorageKey;
-        this.chunk = getStorageChunk;
-    }
-    else {
-        return new Storage(address);
-    }
+    return {
+        "_keyvals" : {},
+        "_address" : address,
+        "sync"     : setStorageKeyVals,
+        "atKey"    : getStorageKey,
+        "chunk"    : getStorageChunk
+    };
 }
 
 function getStorageChunk(start, itemsNum) {
     var output = [];
 
-    Object.keys(this._keyvals).sort(EthWord.compare).map(
-        function(key) {
-            if (key.ge(start) && key.lt(startNum.plus(itemsNum))) {
+    Object.keys(this._keyvals).sort(String.compare).map(
+        (function(key) {
+            var keyNum = Int(key);
+            var startNum = Int(start);
+            if (keyNum.geq(startNum) && keyNum.lt(startNum.plus(itemsNum))) {
                 var skipped = keyNum.minus(startNum).minus(output.length);
                 pushZeros(output, skipped);
-                output.push(this._keyvals(key));
+                output.push(this._keyvals[key]);
             }
-        });
-    var remaining = itemsNum.minus(output.length);
+        }).bind(this)
+    );
+    var remaining = itemsNum - output.length;
     pushZeros(output, remaining);
     return Buffer.concat(output, 32 * itemsNum);
 }
@@ -64,7 +64,7 @@ function setStorageKeyVals(apiURL, f) {
 }
 
 function pushZeros(output, count) {
-    for (i = 0; count.gt(i); ++i) {
+    for (var i = 0; i < count; ++i) {
         output.push(EthWord.zero());
     }
 }

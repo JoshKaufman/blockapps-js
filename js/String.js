@@ -3,19 +3,13 @@ var nodeString = require('string')
 
 module.exports = SolString
 
-function SolString(jsString, decode) {
-    if (this instanceof SolString) {
-        // What is this?  I don't know what I was thinking here.
-        this.setValue(jsString);
+function SolString(x, type, decode) {
+    if (decode) {
+        return Bytes(x, type, true);
     }
-    else {
-        return new SolString(jsString);
-    }
-}
-
-SolString.prototype = Object.create(
-    Object.getPrototypeOf(nodeString("")),
-    {
+    
+    var result = nodeString(x);
+    Object.defineProperties(result, {
         encoding : {
             enumerable : true,
             value : encodingString
@@ -23,16 +17,19 @@ SolString.prototype = Object.create(
         isFixed : {
             enumerable : true,
             value : false
+        },
+        toJSON : {
+            enumerable : true,
+            value : this.toString
         }
-    }
-);
-SolString.prototype.constructor = SolString;
-Object.defineProperties(SolString.prototype, {constructor : {enumerable:false}});
+    });
+
+    return result;
+}
 
 function encodingString() {
-    return Bytes(new Buffer(this.toString(), "utf8")).encoding();
+    var asBuffer = new Buffer(this.toString(), "utf8");
+    asBuffer.isFixed = false;
+    return Bytes(asBuffer).encoding();
 }
 
-function decodingString() {
-    // This class is broken anyway
-}

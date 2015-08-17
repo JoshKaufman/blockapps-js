@@ -10,8 +10,9 @@ function Function(toContract, api) { // NOT the solc API
     var apiReturns = api["functionReturns"];
 
     function useRetVal(callback, txResult) {
-        var retVal = txResult.response;
+        console.log("Return value:");console.log(txResult.response);
         if (typeof callback === "function") {
+            var retVal = new Buffer(txResult.response, "hex");
             callback(typeify(retVal, apiReturns, true));
         }
     }

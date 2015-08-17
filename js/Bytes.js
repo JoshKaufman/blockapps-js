@@ -10,13 +10,7 @@ function Bytes(x, type, decode) {
         return decodingBytes(x, type);
     }
     
-    var result;
-    if (Buffer.isBuffer(x)) {
-        result = new Buffer(x);
-    }
-    else {
-        result = hexStringToBuffer(x);
-    }
+    var result = new Buffer(x);
     Object.defineProperties(result, {
         encoding : {
             value: encodingBytes,
@@ -58,18 +52,17 @@ function encodingBytes() {
 
 function decodingBytes(x, type) {
     var length;
-    if (x.isFixed) {
+    if (type["arrayDataStart"] === undefined) {
         length = type["bytesUsed"];
     }
     else {
-        var tmp = Int(x);
+        var tmp = Int(x, true);
         length = tmp.valueOf();
         x = tmp.decodeTail;
     }
-    var roundLength = 2*Math.floor(length + 32); // Rounded up, in nibbles
-    
-    var result = Bytes(x.slice(0,roundLength));
-    result = result.slice(0,length);
+    var roundLength = Math.floor(length + 32); // Rounded up
+
+    var result = Bytes(x.slice(0,length));
     Object.defineProperties(result, {
         decodeTail : {
             value : x.slice(roundLength),
@@ -85,18 +78,4 @@ function toJSONBytes () {
 
 function toStringBytes() {
     return Buffer.prototype.toString.call(this,"ascii");
-}
-
-function hexStringToBuffer(hexString) {
-    if (hexString.slice(0,2) === "0x") {
-        hexString = hexString.slice(2);
-    }
-    if (hexString.length % 2 != 0) {
-        hexString = "0" + hexString;
-    }
-
-    var byteLength = hexString.length/2;
-    var result = Buffer(byteLength);
-    result.write(hexString, 0, byteLength, "hex");
-    return result;
 }
